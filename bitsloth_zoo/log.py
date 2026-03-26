@@ -15,20 +15,28 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 __all__ = [
-    "UNSLOTH_ENABLE_LOGGING",
+    "BITSLOTH_ENABLE_LOGGING",
     "logger",
 ]
 
 import logging
 import os
 
-UNSLOTH_ENABLE_LOGGING = os.environ.get("UNSLOTH_ENABLE_LOGGING",  "0") in ("1", "True", "true",)
+BITSLOTH_ENABLE_LOGGING = os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") in (
+    "1",
+    "True",
+    "true",
+)
 
 logger = logging.getLogger(__name__)
-if UNSLOTH_ENABLE_LOGGING:
-    logging.basicConfig(level = logging.INFO, format = '[%(name)s|%(levelname)s]%(message)s')
+if BITSLOTH_ENABLE_LOGGING:
+    logging.basicConfig(
+        level=logging.INFO, format="[%(name)s|%(levelname)s]%(message)s"
+    )
     logger.setLevel(logging.INFO)
 else:
-    logging.basicConfig(level = logging.WARNING, format = '[%(name)s|%(levelname)s]%(message)s')
-    logger.setLevel(logging.WARNING) 
+    logging.basicConfig(
+        level=logging.WARNING, format="[%(name)s|%(levelname)s]%(message)s"
+    )
+    logger.setLevel(logging.WARNING)
 pass

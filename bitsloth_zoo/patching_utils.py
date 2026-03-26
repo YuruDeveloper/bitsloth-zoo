@@ -27,9 +27,10 @@ __all__ = [
     "patch_compiled_autograd",
 ]
 
-from .compiler import UNSLOTH_COMPILE_LOCATION
+from .compiler import BITSLOTH_COMPILE_LOCATION
 from .utils import _get_dtype, Version
 from .hf_utils import dtype_from_config, set_dtype_in_config, HAS_TORCH_DTYPE
+
 
 # Also disable compiling on bitsandbytes
 def patch_compiling_bitsandbytes():
@@ -37,22 +38,36 @@ def patch_compiling_bitsandbytes():
     os.environ["UNSLOTH_PATCHED"] = "1"
 
     import bitsandbytes
+
     if Version(bitsandbytes.__version__) >= Version("0.46.0"):
-        if os.environ.get("UNSLOTH_ENABLE_LOGGING", "0") == "1":
+        if os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1":
             print("Unsloth: Bitsandbytes >= 0.46.0 supports torch.compile - enabling.")
     else:
         # Disable dynamo on Linear4bit, Linear8bit and other future modules
-        if os.environ.get("UNSLOTH_ENABLE_LOGGING", "0") == "1":
-            print("Unsloth: Bitsandbytes < 0.46.0 does not support torch.compile - disabling.")
-        for x in ["bitsandbytes.nn.modules", "peft.tuners.lora.bnb",]:
+        if os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1":
+            print(
+                "Unsloth: Bitsandbytes < 0.46.0 does not support torch.compile - disabling."
+            )
+        for x in [
+            "bitsandbytes.nn.modules",
+            "peft.tuners.lora.bnb",
+        ]:
             exec(f"import {x}", globals(), locals())
             layers = dir(eval(x))
             for fx in layers:
-                try: layer = eval(f"{x}.{fx}")
-                except: continue
-                if not hasattr(layer, "forward"): continue
-                if hasattr(eval(f"{x}.{fx}.forward"), "__wrapped__"): continue
-                exec(f"{x}.{fx}.forward = torch._disable_dynamo({x}.{fx}.forward)", globals(), locals())
+                try:
+                    layer = eval(f"{x}.{fx}")
+                except:
+                    continue
+                if not hasattr(layer, "forward"):
+                    continue
+                if hasattr(eval(f"{x}.{fx}.forward"), "__wrapped__"):
+                    continue
+                exec(
+                    f"{x}.{fx}.forward = torch._disable_dynamo({x}.{fx}.forward)",
+                    globals(),
+                    locals(),
+                )
             pass
         pass
     pass
@@ -62,31 +77,39 @@ def patch_compiling_bitsandbytes():
     #     bitsandbytes.autograd._functions.matmul_4bit
     # )
     return
+
+
 pass
 
 
 def patch_layernorm(fast_layernorm):
     # All Unsloth Zoo code licensed under LGPLv3
     import torch.nn
+
     if torch.nn.LayerNorm.__name__ != "Unsloth_LayerNorm":
         os.environ["UNSLOTH_PATCHED"] = "1"
 
         from torch.nn import LayerNorm
+
         class Unsloth_LayerNorm(LayerNorm):
             def forward(self, X):
                 return fast_layernorm(self, X)
+
             pass
+
         pass
 
         torch.nn.LayerNorm = Unsloth_LayerNorm
     return
+
+
 pass
 
 
-def patch_torch_compile(debug = False, O3 = False, ignore_errors = True):
+def patch_torch_compile(debug=False, O3=False, ignore_errors=True):
     # All Unsloth Zoo code licensed under LGPLv3
-    assert(type(debug) is bool)
-    assert(type(O3)    is bool)
+    assert type(debug) is bool
+    assert type(O3) is bool
     import os, logging
 
     if debug:
@@ -96,15 +119,15 @@ def patch_torch_compile(debug = False, O3 = False, ignore_errors = True):
         # os.environ["TORCH_LOGS"] = "dynamo,graph_breaks,recompiles,graph_code,aot_joint_graph,aot_graphs,compiled_autograd_verbose"
         os.environ["TORCHINDUCTOR_COMPILE_THREADS"] = "1"
         torch._logging.set_logs(
-            dynamo = logging.WARN,
-            inductor = logging.WARN,
-            graph_breaks = True,
-            recompiles = True,
-            recompiles_verbose = True,
-            compiled_autograd_verbose = False, # Produces too much code
-            aot_joint_graph = False, # Produces too much code
-            aot_graphs = False, # Produces too much code
-            perf_hints = True, # Performance improvement hints
+            dynamo=logging.WARN,
+            inductor=logging.WARN,
+            graph_breaks=True,
+            recompiles=True,
+            recompiles_verbose=True,
+            compiled_autograd_verbose=False,  # Produces too much code
+            aot_joint_graph=False,  # Produces too much code
+            aot_graphs=False,  # Produces too much code
+            perf_hints=True,  # Performance improvement hints
         )
         torch._dynamo.config.verbose = True
     else:
@@ -113,13 +136,17 @@ def patch_torch_compile(debug = False, O3 = False, ignore_errors = True):
         os.environ.pop("TORCHINDUCTOR_COMPILE_THREADS", None)
         os.environ.pop("TORCHINDUCTOR_FORCE_DISABLE_CACHES", None)
         os.environ.pop("TORCH_LOGS", None)
-        torch._logging.set_logs(all = logging.CRITICAL)
+        torch._logging.set_logs(all=logging.CRITICAL)
         torch._dynamo.config.verbose = False
     pass
     try:
-        print(f"🦥 Unsloth Zoo will now patch everything{DEBUGGING} to make training faster!")
+        print(
+            f"🦥 Unsloth Zoo will now patch everything{DEBUGGING} to make training faster!"
+        )
     except:
-        print(f"Unsloth Zoo will now patch everything{DEBUGGING} to make training faster!")
+        print(
+            f"Unsloth Zoo will now patch everything{DEBUGGING} to make training faster!"
+        )
     pass
 
     os.environ["UNSLOTH_PATCHED"] = "1"
@@ -131,7 +158,7 @@ def patch_torch_compile(debug = False, O3 = False, ignore_errors = True):
     os.environ.pop("TORCHINDUCTOR_CACHE_DIR", None)
 
     # Duplicate functions will cause hashing issues
-    # os.environ["TORCHINDUCTOR_CACHE_DIR"] = UNSLOTH_COMPILE_LOCATION
+    # os.environ["TORCHINDUCTOR_CACHE_DIR"] = BITSLOTH_COMPILE_LOCATION
 
     # https://github.com/sayakpaul/diffusers-torchao?tab=readme-ov-file#things-to-keep-in-mind-when-benchmarking
     os.environ["ENABLE_AOT_AUTOGRAD_CACHE"] = "1"
@@ -143,22 +170,22 @@ def patch_torch_compile(debug = False, O3 = False, ignore_errors = True):
         "config.memory_planning = True",
         # Using 'combined' memory pool will cause re-compiles for dynamic shapres. We just re-use already allocated memory pools
         "config.memory_pool = 'none'",
-        "config.efficient_conv_bn_eval_fx_passes = True", # Reduces stability a little bit
-        "config.dynamic_scale_rblock = True", # Scale down RBLOCK for better occupancy
+        "config.efficient_conv_bn_eval_fx_passes = True",  # Reduces stability a little bit
+        "config.dynamic_scale_rblock = True",  # Scale down RBLOCK for better occupancy
         # Disable reorder_for_compute_comm_overlap since it errors for non multi GPU systems
         # "config.reorder_for_compute_comm_overlap = True", # # enable reordering pass for increasing overlap between compute and communication
-        f"config.max_autotune = {O3}", # enable slow autotuning passes to select algorithms
-        f"config.max_autotune_pointwise = {O3}", # enable slow autotuning passes to select pointwise/reductions algorithms
-        f"config.max_autotune_gemm = False", # GEMM is unnecessary
-        "config.max_autotune_gemm_backends = 'ATEN,TRITON,CPP'", # Not much faster
-        "config.autotune_fallback_to_aten = True", # Fallback to ATEN backend
-        "config.autotune_multi_device = True", # If autotuning in subprocess, whether to use multiple devices
+        f"config.max_autotune = {O3}",  # enable slow autotuning passes to select algorithms
+        f"config.max_autotune_pointwise = {O3}",  # enable slow autotuning passes to select pointwise/reductions algorithms
+        f"config.max_autotune_gemm = False",  # GEMM is unnecessary
+        "config.max_autotune_gemm_backends = 'ATEN,TRITON,CPP'",  # Not much faster
+        "config.autotune_fallback_to_aten = True",  # Fallback to ATEN backend
+        "config.autotune_multi_device = True",  # If autotuning in subprocess, whether to use multiple devices
         f"config.coordinate_descent_tuning = {O3}",
-        f"config.aggressive_fusion = {O3}", # Careful changes results!
+        f"config.aggressive_fusion = {O3}",  # Careful changes results!
         # [TODO] COMBO KERNELS makes everything slower!
         # "config.combo_kernels = True", # Experimental - enable the combo kernel that combines data-independent kernels
         # "config.combo_kernel_foreach_dynamic_shapes = True",
-        "config.freezing = False", # Freezes weights --> ** only useful for inference **
+        "config.freezing = False",  # Freezes weights --> ** only useful for inference **
         # f"config.triton.multi_kernel = {O3}", # use tuning to pick between different subkernels
         "config.cuda.enable_cuda_lto = True",
         "config.cuda.use_fast_math = True",
@@ -172,20 +199,20 @@ def patch_torch_compile(debug = False, O3 = False, ignore_errors = True):
     ]
     # Torch dynamo arguments
     torch_dynamo_arguments = [
-        "config.accumulated_cache_size_limit = 1024", # Bump up a bit from 256
-        f"config.suppress_errors = {not debug and ignore_errors}", # Supress errors for now
+        "config.accumulated_cache_size_limit = 1024",  # Bump up a bit from 256
+        f"config.suppress_errors = {not debug and ignore_errors}",  # Supress errors for now
         f"config.do_not_emit_runtime_asserts = {not debug}",
-        "config.inline_inbuilt_nn_modules = True", # Torch 2.5 Regional recompilation
+        "config.inline_inbuilt_nn_modules = True",  # Torch 2.5 Regional recompilation
         "config.numpy_default_float = 'float32'",
         # FAILS for Gemma!
-        "config.compiled_autograd = False", # New Torch 2.4 feature which can compile backwards passes
+        "config.compiled_autograd = False",  # New Torch 2.4 feature which can compile backwards passes
         # https://pytorch.org/tutorials/intermediate/compiled_autograd_tutorial.html
         # [NOTE] recompile_limit and cache_size_limit are equivalent!
-        "config.recompile_limit = 1024", # Increase recompile amounts to 1024 - then will do eager
-        "config.cache_size_limit = 1024", # Flex Attention
+        "config.recompile_limit = 1024",  # Increase recompile amounts to 1024 - then will do eager
+        "config.cache_size_limit = 1024",  # Flex Attention
         # f"config.fail_on_recompile_limit_hit = {not debug and ignore_errors}", # Ignore recompiles CANNOT be used in tandem with suppress_errors
-        "config.allow_unspec_int_on_nn_module = True", # Integers in modules will auto wrap torch.tensor(self.vocab_size)
-        f"config.optimize_ddp = {not debug}", # Optimizes DDP, but can error out so disable on debug
+        "config.allow_unspec_int_on_nn_module = True",  # Integers in modules will auto wrap torch.tensor(self.vocab_size)
+        f"config.optimize_ddp = {not debug}",  # Optimizes DDP, but can error out so disable on debug
         # Captures .item() for eg
         # n_chunks = int(torch.ceil((torch.tensor(vocab_size) / 262144) * 8))
         "config.capture_scalar_outputs = True",
@@ -197,16 +224,25 @@ def patch_torch_compile(debug = False, O3 = False, ignore_errors = True):
         torch._dynamo.config.suppress_errors = True
     pass
     import torch._inductor.config as config
+
     for _try_compile_argument in torch_compile_arguments:
-        try:    exec(_try_compile_argument)
-        except: pass
+        try:
+            exec(_try_compile_argument)
+        except:
+            pass
     pass
     import torch._dynamo.config as config
+
     for _try_dynamo_argument in torch_dynamo_arguments:
-        try:    exec(_try_dynamo_argument)
-        except: pass
+        try:
+            exec(_try_dynamo_argument)
+        except:
+            pass
     pass
+
+
 pass
+
 
 def get_model(model):
     found_layers = False
@@ -217,7 +253,7 @@ def get_model(model):
             break
         elif hasattr(x, "model"):
             x = x.model
-        elif hasattr(x, "base_model") and x.base_model !=x:
+        elif hasattr(x, "base_model") and x.base_model != x:
             # for VLMs x.base_model = x causing this to be stuck in endless loop
             # the check x.base_model != x is to prevent this
             x = x.base_model
@@ -227,29 +263,41 @@ def get_model(model):
             break
     pass
     return x, found_layers
+
+
 pass
 
 
-def verify_and_set_device(module,):
+def verify_and_set_device(
+    module,
+):
     """
     Verify that all parameters of a module are on the same device.
     """
     set_of_devices = set(x.device for x in module.parameters())
     if len(set_of_devices) > 1:
-        raise ValueError(f"Unsloth: All parameters of {module} should be on the same device")
+        raise ValueError(
+            f"Unsloth: All parameters of {module} should be on the same device"
+        )
     device = set_of_devices.pop()
     module._per_layer_device_index = device.index
+
+
 pass
+
 
 def patch_to_dict():
     from functools import wraps
+
     try:
         from transformers.configuration_utils import PreTrainedConfig
+
         PretrainedConfig = PreTrainedConfig
     except:
         from transformers.configuration_utils import PretrainedConfig
 
     from .hf_utils import _normalize_dict_dtypes
+
     original_to_dict = PretrainedConfig.to_dict
     original_to_diff_dict = PretrainedConfig.to_diff_dict
 
@@ -271,18 +319,21 @@ def patch_to_dict():
     wrapped_to_dict._unsloth_patched = True
     if not getattr(PretrainedConfig, "_unsloth_patched", False):
         setattr(PretrainedConfig, "to_dict", wrapped_to_dict)
+
+
 pass
+
 
 def patch_model_and_tokenizer(
     model,
     tokenizer,
-    downcast_rope = True,
-    fix_embeddings = True,
-    do_forced_float32 = False,
-    correct_dtype = None,
+    downcast_rope=True,
+    fix_embeddings=True,
+    do_forced_float32=False,
+    correct_dtype=None,
 ):
     # All Unsloth Zoo code licensed under LGPLv3
-    assert(type(downcast_rope) is bool)
+    assert type(downcast_rope) is bool
     import gc
 
     # Fix dtype
@@ -290,25 +341,33 @@ def patch_model_and_tokenizer(
     while hasattr(m, "model"):
         if hasattr(m, "config"):
             config_dtype = dtype_from_config(m.config)
-            if   config_dtype ==  "float32": set_dtype_in_config(m.config, torch.float32)
-            elif config_dtype == "bfloat16": set_dtype_in_config(m.config, torch.bfloat16)
-            elif config_dtype ==  "float16": set_dtype_in_config(m.config, torch.float16)
+            if config_dtype == "float32":
+                set_dtype_in_config(m.config, torch.float32)
+            elif config_dtype == "bfloat16":
+                set_dtype_in_config(m.config, torch.bfloat16)
+            elif config_dtype == "float16":
+                set_dtype_in_config(m.config, torch.float16)
         pass
         m = m.model
     pass
     if hasattr(m, "config"):
         config_dtype = dtype_from_config(m.config)
-        if   config_dtype ==  "float32": set_dtype_in_config(m.config, torch.float32)
-        elif config_dtype == "bfloat16": set_dtype_in_config(m.config, torch.bfloat16)
-        elif config_dtype ==  "float16": set_dtype_in_config(m.config, torch.float16)
+        if config_dtype == "float32":
+            set_dtype_in_config(m.config, torch.float32)
+        elif config_dtype == "bfloat16":
+            set_dtype_in_config(m.config, torch.bfloat16)
+        elif config_dtype == "float16":
+            set_dtype_in_config(m.config, torch.float16)
     pass
 
     # Also patch all dtypes - BnB seems to not allocate the correct type?
     # BnB default dtype seems to be float16!
     try:
-        from bitsandbytes.nn  import Linear4bit as Bnb_Linear4bit
+        from bitsandbytes.nn import Linear4bit as Bnb_Linear4bit
     except:
-        raise ImportError("Unsloth: Please install bitsandbytes via `pip install bitsandbytes`")
+        raise ImportError(
+            "Unsloth: Please install bitsandbytes via `pip install bitsandbytes`"
+        )
     try:
         from peft.tuners.lora import Linear4bit as Peft_Linear4bit
     except:
@@ -330,9 +389,21 @@ def patch_model_and_tokenizer(
                 setted_dtype = module._pre_set_compute_dtype
             else:
                 setted_dtype = torch.float16
-            if "down_proj" in name or "up_proj" in name or "gate_proj" in name or "fc1" in name or "fc2" in name:
+            if (
+                "down_proj" in name
+                or "up_proj" in name
+                or "gate_proj" in name
+                or "fc1" in name
+                or "fc2" in name
+            ):
                 module.to(setted_dtype)
-            if "q_proj" in name or "k_proj" in name or "v_proj" in name or "o_proj" in name or "out_proj" in name:
+            if (
+                "q_proj" in name
+                or "k_proj" in name
+                or "v_proj" in name
+                or "o_proj" in name
+                or "out_proj" in name
+            ):
                 module.to(setted_dtype)
             if "lm_head" in name or "embed_tokens" in name:
                 module.to(setted_dtype)
@@ -368,25 +439,33 @@ def patch_model_and_tokenizer(
 
     # Correct dtype
     def __fix_dtype(config):
-        if not hasattr(config, "to_dict"): return
+        if not hasattr(config, "to_dict"):
+            return
         dicts = config.to_dict()
         for key, value in dicts.items():
             if key == "torch_dtype" or key == "dtype":
                 setattr(config, key, correct_dtype)
             else:
                 __fix_dtype(getattr(config, key, None))
+
     m = model
     while hasattr(m, "model"):
         if hasattr(m, "dtype"):
-            try: setattr(m, "dtype", correct_dtype)
-            except: pass
-        if hasattr(m, "config"): __fix_dtype(m.config)
+            try:
+                setattr(m, "dtype", correct_dtype)
+            except:
+                pass
+        if hasattr(m, "config"):
+            __fix_dtype(m.config)
         m = m.model
     pass
-    if hasattr(m, "config"): __fix_dtype(m.config)
+    if hasattr(m, "config"):
+        __fix_dtype(m.config)
     if hasattr(m, "dtype"):
-        try: setattr(m, "dtype", correct_dtype)
-        except: pass
+        try:
+            setattr(m, "dtype", correct_dtype)
+        except:
+            pass
     pass
 
     # since we are now setting actual dtypes in config
@@ -401,7 +480,7 @@ def patch_model_and_tokenizer(
         if isinstance(module, (Bnb_Linear4bit, Peft_Linear4bit)):
             weight = module.weight
             # Check if quant_state exists for vision models like unsloth/Llama-3.2-11B-Vision-Instruct-bnb-4bit, unsloth/granite-vision-3.2-2b
-            if not hasattr(weight, 'quant_state'):
+            if not hasattr(weight, "quant_state"):
                 print(f"Skipping {name}: no quant_state found")
                 continue
 
@@ -414,7 +493,7 @@ def patch_model_and_tokenizer(
 
             if type(quant_state) is list:
                 # BnB seems to have float16 as default!
-                module.weight.quant_state[2] = setted_dtype # Cast to correct dtype
+                module.weight.quant_state[2] = setted_dtype  # Cast to correct dtype
             else:
                 # https://github.com/TimDettmers/bitsandbytes/pull/763/files
                 quant_state.dtype = setted_dtype
@@ -424,44 +503,53 @@ def patch_model_and_tokenizer(
                 module.compute_dtype = setted_dtype
         pass
         # Downcast RoPE embedding to correct data type
-        if downcast_rope and ((name.endswith("rotary_emb") or hasattr(module, "cos_cached"))):
-
-            if hasattr(module, "cos_cached") and \
-                (module.cos_cached.dtype != correct_dtype):
-
+        if downcast_rope and (
+            name.endswith("rotary_emb") or hasattr(module, "cos_cached")
+        ):
+            if hasattr(module, "cos_cached") and (
+                module.cos_cached.dtype != correct_dtype
+            ):
                 module.cos_cached = module.cos_cached.to(correct_dtype)
                 module.sin_cached = module.sin_cached.to(correct_dtype)
 
-            elif hasattr(module, "short_cos_cached") and \
-                (module.short_cos_cached.dtype != correct_dtype):
-
+            elif hasattr(module, "short_cos_cached") and (
+                module.short_cos_cached.dtype != correct_dtype
+            ):
                 module.short_cos_cached = module.short_cos_cached.to(correct_dtype)
                 module.short_sin_cached = module.short_sin_cached.to(correct_dtype)
             pass
         pass
     pass
 
-    if not fix_embeddings: return model, tokenizer
+    if not fix_embeddings:
+        return model, tokenizer
 
     # Check if torch.nn.Embedding seen
     is_torch_embedding = False
     try:
         old_input_embedding = model.get_input_embeddings()
-        is_torch_embedding  = type(old_input_embedding) is torch.nn.Embedding
+        is_torch_embedding = type(old_input_embedding) is torch.nn.Embedding
         old_input_embedding = old_input_embedding.weight
     except:
         return model, tokenizer
 
     # Maybe not all models have a lm_head?
-    try: old_output_embedding = model.get_output_embeddings().weight
-    except: old_output_embedding = torch.zeros(0)
+    try:
+        old_output_embedding = model.get_output_embeddings().weight
+    except:
+        old_output_embedding = torch.zeros(0)
 
     # Check for tied weights as well
-    is_tied = (old_input_embedding.data_ptr() == old_output_embedding.data_ptr()) \
-        or (model.config.tie_word_embeddings)
+    is_tied = (old_input_embedding.data_ptr() == old_output_embedding.data_ptr()) or (
+        model.config.tie_word_embeddings
+    )
 
     # Check pad token's id -> we need to expand the embedding
-    if is_torch_embedding and (tokenizer is not None) and (len(tokenizer) > old_input_embedding.shape[0]):
+    if (
+        is_torch_embedding
+        and (tokenizer is not None)
+        and (len(tokenizer) > old_input_embedding.shape[0])
+    ):
         # Workaround randomnly fixes it for torch versions < 2.
         requires_grad = old_input_embedding.requires_grad
         old_input_embedding.requires_grad_(False)
@@ -472,13 +560,13 @@ def patch_model_and_tokenizer(
         current_model = model
         while hasattr(current_model, "model") and hasattr(current_model, "config"):
             if hasattr(current_model.config, "vocab_size"):
-                current_model.config.update({"vocab_size" : len(tokenizer)})
-            current_model.config.update({"unsloth_optimized" : True})
+                current_model.config.update({"vocab_size": len(tokenizer)})
+            current_model.config.update({"unsloth_optimized": True})
             current_model = current_model.model
         if hasattr(current_model, "model") and hasattr(current_model, "config"):
             if hasattr(current_model.config, "vocab_size"):
-                current_model.config.update({"vocab_size" : len(tokenizer)})
-            current_model.config.update({"unsloth_optimized" : True})
+                current_model.config.update({"vocab_size": len(tokenizer)})
+            current_model.config.update({"unsloth_optimized": True})
         pass
     pass
 
@@ -486,30 +574,31 @@ def patch_model_and_tokenizer(
         model.set_input_embeddings(
             torch.nn.Embedding.from_pretrained(
                 old_input_embedding,
-                padding_idx = getattr(model.config, "pad_token_id", None),
+                padding_idx=getattr(model.config, "pad_token_id", None),
             )
         )
     pass
 
     # We also do this for the lm_head
     if old_output_embedding.numel() != 0:
-
         requires_grad = old_output_embedding.requires_grad
-        lm_head = torch.nn.Linear(1, 1, bias = None)
+        lm_head = torch.nn.Linear(1, 1, bias=None)
         del lm_head.weight
 
         lm_head.weight = old_output_embedding if not is_tied else old_input_embedding
-        lm_head.in_features  = lm_head.weight.shape[1]
+        lm_head.in_features = lm_head.weight.shape[1]
         lm_head.out_features = lm_head.weight.shape[0]
 
         lm_head.weight.requires_grad_(requires_grad)
         model.set_output_embeddings(lm_head)
-        if hasattr(model, "lm_head"): model.lm_head = lm_head
+        if hasattr(model, "lm_head"):
+            model.lm_head = lm_head
     pass
 
     # Must tie lm_head and embed_tokens if they are tied!
     # Otherwise error will occur on saving models ie use save_model
-    if is_tied: model.tie_weights()
+    if is_tied:
+        model.tie_weights()
 
     # For pipeline parallel models, we need to set the device for each layer for easier access later
     x, found_layers = get_model(model)
@@ -523,6 +612,8 @@ def patch_model_and_tokenizer(
         gc.collect()
         torch.cuda.empty_cache()
     return model, tokenizer
+
+
 pass
 
 
@@ -534,35 +625,48 @@ def patch_compiled_autograd():
 
     # From https://github.com/pytorch/pytorch/pull/135795/files
     import torch._dynamo.compiled_autograd
+
     fx = torch._dynamo.compiled_autograd.AutogradCompilerInstance.end_capture
-    if fx.__name__ == "unsloth_end_capture": return
+    if fx.__name__ == "unsloth_end_capture":
+        return
     source = inspect.getsource(fx)
-    if "with disable()" in source: return
+    if "with disable()" in source:
+        return
     spaces = source.find("def")
     source = source.split("\n")
     source = "\n".join(x[spaces:] for x in source)
     old = "return compiled_fn(inputs, sizes, scalars, hooks)"
     match = re.search(r"\n([ ]{1,})return compiled_fn", source)
     n = len(match.group(1)) if match else 0
-    source = source.replace(old, f"with disable():\n{' '*(n + 4)}{old}")
+    source = source.replace(old, f"with disable():\n{' ' * (n + 4)}{old}")
     source = source.replace("def end_capture", "def unsloth_end_capture", 1)
 
     # Import items to make the function executable
     all_items = dir(torch._dynamo.compiled_autograd)
     good_items = [x for x in all_items if x in source]
-    exec("from torch._dynamo.compiled_autograd import (" + ", ".join(x for x in good_items) + ")", globals())
+    exec(
+        "from torch._dynamo.compiled_autograd import ("
+        + ", ".join(x for x in good_items)
+        + ")",
+        globals(),
+    )
     exec(source, globals())
-    torch._dynamo.compiled_autograd.AutogradCompilerInstance.end_capture = unsloth_end_capture
+    torch._dynamo.compiled_autograd.AutogradCompilerInstance.end_capture = (
+        unsloth_end_capture
+    )
 
     # From https://github.com/pytorch/pytorch/pull/135795/files
     try:
         import torch._dynamo.variables.misc
+
         fx = torch._dynamo.variables.misc.AutogradEngineVariable.call_method
     except:
         return
-    if fx.__name__ == "unsloth_call_method": return
+    if fx.__name__ == "unsloth_call_method":
+        return
     source = inspect.getsource(fx)
-    if "in_compiled_autograd_region" in source: return
+    if "in_compiled_autograd_region" in source:
+        return
     spaces = source.find("def")
     source = source.split("\n")
     source = "\n".join(x[spaces:] for x in source)
@@ -576,20 +680,36 @@ def patch_compiled_autograd():
     # Import items to make the function executable
     all_items = dir(torch._dynamo.variables.misc)
     good_items = [x for x in all_items if x in source]
-    exec("from torch._dynamo.variables.misc import (" + ", ".join(x for x in good_items) + ")", globals())
+    exec(
+        "from torch._dynamo.variables.misc import ("
+        + ", ".join(x for x in good_items)
+        + ")",
+        globals(),
+    )
     exec(source, globals())
-    torch._dynamo.variables.misc.AutogradEngineVariable.call_method = unsloth_call_method
+    torch._dynamo.variables.misc.AutogradEngineVariable.call_method = (
+        unsloth_call_method
+    )
     return
+
+
 pass
 
 
 # utility function to help BC with old module hierarchy for transformers >=4.52.0
 def check_conversion_mappings(model, current_key_name_str, skip_modules):
     # model_root_cls is None if there are no conversion_mappings or no _root_cls
-    model_root_cls = getattr(model, "_root_cls", model if hasattr(model, "_checkpoint_conversion_mapping") else None)
+    model_root_cls = getattr(
+        model,
+        "_root_cls",
+        model if hasattr(model, "_checkpoint_conversion_mapping") else None,
+    )
     if model_root_cls is None:
         return False
-    if hasattr(model_root_cls, "_checkpoint_conversion_mapping") and len(model_root_cls._checkpoint_conversion_mapping) > 0:
+    if (
+        hasattr(model_root_cls, "_checkpoint_conversion_mapping")
+        and len(model_root_cls._checkpoint_conversion_mapping) > 0
+    ):
         # if this is true, then it means that we must be on transformers >=4.52.0 because conversion_mappings was added in 4.52.0
         # we cant know if the skip module naming convention is new or old
         # but if we are supposed to skip this current_key_name_str, and it didn't pass
@@ -599,11 +719,15 @@ def check_conversion_mappings(model, current_key_name_str, skip_modules):
         # old transformers + old module hierarchy means no BC needed
         # old transformers + new module hierarchy is problematic since we don't have the conversion_mappings to reverse
         # follow the logic from save_pretrained in transformers.modeling_utils
-        reverse_conversion_mappings = {v: k for k, v in model_root_cls._checkpoint_conversion_mapping.items()}
+        reverse_conversion_mappings = {
+            v: k for k, v in model_root_cls._checkpoint_conversion_mapping.items()
+        }
         new_current_key_names_str = current_key_name_str
         for pattern, replacement in reverse_conversion_mappings.items():
             try:
-                replacement = replacement.lstrip("^")  # strip off un-needed chars and patterns
+                replacement = replacement.lstrip(
+                    "^"
+                )  # strip off un-needed chars and patterns
                 replacement = re.sub(r"\(.*?\)", "", replacement)
                 key, n_replace = re.subn(pattern, replacement, current_key_name_str)
                 # Early exit of the loop
@@ -612,11 +736,17 @@ def check_conversion_mappings(model, current_key_name_str, skip_modules):
                     break
             except Exception as e:
                 # skip this pattern but log
-                do_logging = os.environ.get('UNSLOTH_ENABLE_LOGGING', '0') == '1'
+                do_logging = os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1"
                 if do_logging:
                     print(f"Unsloth: Replace bnb issue: {str(e)}")
                 break
-        return any([(skip_key + "." in new_current_key_names_str) or (skip_key == new_current_key_names_str) for skip_key in skip_modules])
+        return any(
+            [
+                (skip_key + "." in new_current_key_names_str)
+                or (skip_key == new_current_key_names_str)
+                for skip_key in skip_modules
+            ]
+        )
     return False
 
 
@@ -639,10 +769,10 @@ def parsed_statement(code: str) -> ast.stmt:
 class WrapRecursiveCall(ast.NodeTransformer):
     function_name = "_replace_with_bnb_linear"
     mark_statement = parsed_statement(
-        '_mark_parent(module, model._root_cls '
+        "_mark_parent(module, model._root_cls "
         'if hasattr(model, "_root_cls") else type(model))'
     )
-    unmark_statement = parsed_statement('_unmark_parent(module)')
+    unmark_statement = parsed_statement("_unmark_parent(module)")
 
     def visit_Assign(self, node: ast.Assign):
         """
@@ -663,10 +793,10 @@ class WrapRecursiveCall(ast.NodeTransformer):
             and getattr(node.value.func, "id", None) == self.function_name
         ):
             wrapped = ast.Try(
-                body      =[self.mark_statement, node],
-                handlers  =[],
-                orelse    =[],
-                finalbody =[self.unmark_statement],
+                body=[self.mark_statement, node],
+                handlers=[],
+                orelse=[],
+                finalbody=[self.unmark_statement],
             )
             return ast.copy_location(wrapped, node)
         return node
@@ -675,18 +805,28 @@ class WrapRecursiveCall(ast.NodeTransformer):
 # Patch for dynamic 4bit quantization
 import inspect
 import transformers.integrations.bitsandbytes
-if hasattr(transformers.integrations.bitsandbytes, "_replace_with_bnb_linear") and \
-    (transformers.integrations.bitsandbytes._replace_with_bnb_linear.__name__ != "_unsloth_replace_with_bnb_linear"):
 
+if hasattr(transformers.integrations.bitsandbytes, "_replace_with_bnb_linear") and (
+    transformers.integrations.bitsandbytes._replace_with_bnb_linear.__name__
+    != "_unsloth_replace_with_bnb_linear"
+):
     # All Unsloth Zoo code licensed under LGPLv3
-    source = inspect.getsource(transformers.integrations.bitsandbytes._replace_with_bnb_linear)
+    source = inspect.getsource(
+        transformers.integrations.bitsandbytes._replace_with_bnb_linear
+    )
     functions = dir(transformers.integrations.bitsandbytes)
-    functions = [x for x in functions if f" {x}" in source or f"{x}." in source or f"{x}(" in source]
+    functions = [
+        x
+        for x in functions
+        if f" {x}" in source or f"{x}." in source or f"{x}(" in source
+    ]
     functions = [x for x in functions if x != "_replace_with_bnb_linear"]
     x = ", ".join(functions)
     exec(f"from transformers.integrations.bitsandbytes import ({x})", globals())
     if "current_key_name_str" not in source:
-        raise RuntimeError("Unsloth: Patch for dynamic quantization failed since current_key_name_str does not exist.")
+        raise RuntimeError(
+            "Unsloth: Patch for dynamic quantization failed since current_key_name_str does not exist."
+        )
 
     # First patch recursive calls to mark the parent class
     # we need it to access the parent class to check for conversion_mappings
@@ -704,19 +844,23 @@ if hasattr(transformers.integrations.bitsandbytes, "_replace_with_bnb_linear") a
         new_source = ast.unparse(source_tree)
 
         # will raise error if patch fails
-        compile(new_source, '<temp_patched>', 'exec')
-        if '_mark_parent' not in new_source and '_unmark_parent' not in new_source:
-            do_logging = os.environ.get('UNSLOTH_ENABLE_LOGGING', '0') == '1'
+        compile(new_source, "<temp_patched>", "exec")
+        if "_mark_parent" not in new_source and "_unmark_parent" not in new_source:
+            do_logging = os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1"
             if do_logging:
-                print(f"Unsloth: Could not wrap replace_with_bnb_linear but may not be an issue")
+                print(
+                    f"Unsloth: Could not wrap replace_with_bnb_linear but may not be an issue"
+                )
             mark_parent_error = True
         else:
             source = new_source
 
     except Exception as e:
-        do_logging = os.environ.get('UNSLOTH_ENABLE_LOGGING', '0') == '1'
+        do_logging = os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1"
         if do_logging:
-            print(f"Unsloth: Could not wrap replace_with_bnb_linear but may not be an issue. {str(e)}")
+            print(
+                f"Unsloth: Could not wrap replace_with_bnb_linear but may not be an issue. {str(e)}"
+            )
         mark_parent_error = True
 
     if mark_parent_error:
@@ -739,16 +883,20 @@ if hasattr(transformers.integrations.bitsandbytes, "_replace_with_bnb_linear") a
 
     def add_score_code(match):
         indentation = match.group(1)  # Captured indentation
-        line_content = match.group(2) # The line 'current_key_name.append(name)'
+        line_content = match.group(2)  # The line 'current_key_name.append(name)'
 
-        indented_breakpoint_code = "\n".join([f"{indentation}{line}" for line in score_code.splitlines()])
+        indented_breakpoint_code = "\n".join(
+            [f"{indentation}{line}" for line in score_code.splitlines()]
+        )
 
         return f"{indentation}{line_content}\n{indented_breakpoint_code}"
 
     source = re.sub(pattern, add_score_code, source, flags=re.MULTILINE)
 
     exec(source, globals())
-    transformers.integrations.bitsandbytes._replace_with_bnb_linear = _unsloth_replace_with_bnb_linear
+    transformers.integrations.bitsandbytes._replace_with_bnb_linear = (
+        _unsloth_replace_with_bnb_linear
+    )
 pass
 
 # Patch for transformers 5.x: should_convert_module uses re.match (prefix-anchored)
@@ -759,20 +907,23 @@ pass
 # (substring matching). On 5.x, _replace_with_bnb_linear doesn't exist, so we
 # patch should_convert_module instead.
 import transformers.quantizers.quantizers_utils as _quantizers_utils
-if not hasattr(transformers.integrations.bitsandbytes, "_replace_with_bnb_linear") and \
-    hasattr(_quantizers_utils, "should_convert_module") and \
-    getattr(_quantizers_utils.should_convert_module, "__name__", "") != "_unsloth_should_convert_module":
 
+if (
+    not hasattr(transformers.integrations.bitsandbytes, "_replace_with_bnb_linear")
+    and hasattr(_quantizers_utils, "should_convert_module")
+    and getattr(_quantizers_utils.should_convert_module, "__name__", "")
+    != "_unsloth_should_convert_module"
+):
     _original_should_convert_module = _quantizers_utils.should_convert_module
 
     def _unsloth_should_convert_module(full_name, patterns=None):
         if patterns is None:
             return True
         should_not_convert = any(
-            re.match(f"{key}\\.", full_name) or
-            re.match(f"{key}", full_name) or
-            full_name.endswith(key) or
-            f".{key}." in f".{full_name}."
+            re.match(f"{key}\\.", full_name)
+            or re.match(f"{key}", full_name)
+            or full_name.endswith(key)
+            or f".{key}." in f".{full_name}."
             for key in patterns
         )
         return not should_not_convert
@@ -780,7 +931,9 @@ if not hasattr(transformers.integrations.bitsandbytes, "_replace_with_bnb_linear
     _quantizers_utils.should_convert_module = _unsloth_should_convert_module
     # Also patch the imported reference in bitsandbytes module
     if hasattr(transformers.integrations.bitsandbytes, "should_convert_module"):
-        transformers.integrations.bitsandbytes.should_convert_module = _unsloth_should_convert_module
+        transformers.integrations.bitsandbytes.should_convert_module = (
+            _unsloth_should_convert_module
+        )
 pass
 
 # Unsloth Zoo - Utilities for Unsloth

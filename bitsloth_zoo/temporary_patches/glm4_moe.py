@@ -15,12 +15,14 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import torch
-from .common import TEMPORARY_PATCHES, torch_compile, UNSLOTH_ENABLE_LOGGING
+from .common import TEMPORARY_PATCHES, torch_compile, BITSLOTH_ENABLE_LOGGING
 from .utils import patch_function, raise_error, logger
 from .moe_utils import (
     patch_param_wrapper_for_moe,
     get_forward_moe_backend,
 )
+
+
 def patch_glm4_moe():
     """
     Patches GLM4 MoE to support Split LoRA using grouped GEMM.
@@ -70,19 +72,22 @@ def patch_glm4_moe():
             first_weight = first_weight.permute(1, 0, 2).contiguous()
 
             # second_weight from A: (E, R, out_dim)
-            second_weight = weight_A.view(num_experts, rank_per_expert, dim1).contiguous()
+            second_weight = weight_A.view(
+                num_experts, rank_per_expert, dim1
+            ).contiguous()
         else:
             # Standard: weight_A is (E*R, in_dim), weight_B is (out_dim, E*R)
             first_weight = weight_A.view(num_experts, rank_per_expert, dim1)
             first_weight = first_weight.permute(0, 2, 1).contiguous()  # (E, in_dim, R)
 
             second_weight = weight_B.view(dim2, num_experts, rank_per_expert)
-            second_weight = second_weight.permute(1, 2, 0).contiguous()  # (E, R, out_dim)
+            second_weight = second_weight.permute(
+                1, 2, 0
+            ).contiguous()  # (E, R, out_dim)
 
         return first_weight, second_weight, scaling, num_experts
 
     Glm4MoeLiteNaiveMoe._unsloth_lora_extractor_fn = staticmethod(_glm4_lora_extractor)
-
 
     # 1. Patch Glm4MoeLiteNaiveMoe (The Expert Layer)
     # This delegates to moe_utils which handles the Split LoRA logic
@@ -122,10 +127,11 @@ def patch_glm4_moe():
 
     # Apply patches
     patch_function(Glm4MoeLiteNaiveMoe, "forward", get_forward_moe_backend())
-    patch_function(Glm4MoeLiteMoE,      "forward", moe_block_forward)
+    patch_function(Glm4MoeLiteMoE, "forward", moe_block_forward)
 
-    if UNSLOTH_ENABLE_LOGGING:
+    if BITSLOTH_ENABLE_LOGGING:
         logger.info("Unsloth: Patched GLM4 MoE for Split LoRA support.")
+
 
 # Register the patch
 TEMPORARY_PATCHES.append(patch_glm4_moe)

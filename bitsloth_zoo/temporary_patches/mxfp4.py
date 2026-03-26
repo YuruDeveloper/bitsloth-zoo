@@ -21,7 +21,7 @@ import torch
 import torch.nn as nn
 import os
 import math
-from .common import TEMPORARY_PATCHES, UNSLOTH_ENABLE_LOGGING, logger
+from .common import TEMPORARY_PATCHES, BITSLOTH_ENABLE_LOGGING, logger
 from .utils import patch_function, raise_error
 
 # MXFP4 configuration
@@ -34,12 +34,15 @@ def _check_triton_kernels_available():
     """Check if OpenAI's triton_kernels package is available for MXFP4."""
     try:
         from triton_kernels import matmul_ogs, swiglu
+
         return True
     except ImportError:
         return False
 
 
 _TRITON_KERNELS_AVAILABLE = None
+
+
 def is_triton_kernels_available():
     """Cached check for triton_kernels availability."""
     global _TRITON_KERNELS_AVAILABLE
@@ -63,7 +66,7 @@ def should_dequantize_mxfp4():
         return True  # Default: dequantize for compatibility
 
     if not is_triton_kernels_available():
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             logger.warning(
                 "Unsloth: UNSLOTH_MXFP4_NO_DEQUANTIZE=1 but triton_kernels not available. "
                 "Will dequantize MXFP4 to bf16."
@@ -81,7 +84,7 @@ def get_mxfp4_config_for_training():
     - UNSLOTH_MXFP4_NO_DEQUANTIZE=1 AND triton_kernels is available
 
     Usage:
-        from unsloth_zoo.temporary_patches.mxfp4 import get_mxfp4_config_for_training
+        from bitsloth_zoo.temporary_patches.mxfp4 import get_mxfp4_config_for_training
         from transformers import AutoModelForCausalLM
 
         model = AutoModelForCausalLM.from_pretrained(
@@ -92,17 +95,22 @@ def get_mxfp4_config_for_training():
     try:
         from transformers import Mxfp4Config
     except ImportError:
-        raise ImportError("transformers.Mxfp4Config not available. Please upgrade transformers.")
+        raise ImportError(
+            "transformers.Mxfp4Config not available. Please upgrade transformers."
+        )
 
     dequantize = should_dequantize_mxfp4()
 
-    if UNSLOTH_ENABLE_LOGGING:
+    if BITSLOTH_ENABLE_LOGGING:
         if dequantize:
             logger.info("Unsloth: MXFP4 will be dequantized to bf16 for training")
         else:
-            logger.info("Unsloth: MXFP4 weights will remain quantized (triton_kernels available)")
+            logger.info(
+                "Unsloth: MXFP4 weights will remain quantized (triton_kernels available)"
+            )
 
     return Mxfp4Config(dequantize=dequantize)
+
 
 def patch_convert_moe_packed_tensors():
     """
@@ -138,7 +146,9 @@ def patch_convert_moe_packed_tensors():
 
         scales = scales.to(torch.int32) - 127
 
-        assert blocks.shape[:-1] == scales.shape, f"{blocks.shape=} does not match {scales.shape=}"
+        assert blocks.shape[:-1] == scales.shape, (
+            f"{blocks.shape=} does not match {scales.shape=}"
+        )
 
         lut = torch.tensor(FP4_VALUES, dtype=dtype, device=blocks.device)
 
@@ -170,7 +180,12 @@ def patch_convert_moe_packed_tensors():
         out = out.reshape(*prefix_shape, G, B * 2).view(*prefix_shape, G * B * 2)
         del blocks, scales, lut
         return out
-    patch_function(transformers.integrations.mxfp4, "convert_moe_packed_tensors", convert_moe_packed_tensors)
+
+    patch_function(
+        transformers.integrations.mxfp4,
+        "convert_moe_packed_tensors",
+        convert_moe_packed_tensors,
+    )
 
     """
     Transformers 4.55.4 did dequantized.transpose(1, 2).contiguous().to(target_device)
@@ -178,11 +193,15 @@ def patch_convert_moe_packed_tensors():
     """
     try:
         import transformers.integrations.mxfp4
-        from transformers.integrations.tensor_parallel import shard_and_distribute_module
+        from transformers.integrations.tensor_parallel import (
+            shard_and_distribute_module,
+        )
     except Exception as e:
         return raise_error("transformers.integrations.mxfp4.dequantize", e)
 
-    def dequantize(module, param_name, param_value, target_device, dq_param_name, **kwargs):
+    def dequantize(
+        module, param_name, param_value, target_device, dq_param_name, **kwargs
+    ):
         model = kwargs.get("model", None)
         empty_param = kwargs.get("empty_param", None)
         casting_dtype = kwargs.get("casting_dtype", None)
@@ -208,15 +227,20 @@ def patch_convert_moe_packed_tensors():
                 scales_attr = f"{proj}_scales"
                 setattr(module, param_name.rsplit(".", 1)[1], param_value)
                 if hasattr(module, blocks_attr) and hasattr(module, scales_attr):
-                    dequantized = convert_moe_packed_tensors(getattr(module, blocks_attr), getattr(module, scales_attr))
+                    dequantized = convert_moe_packed_tensors(
+                        getattr(module, blocks_attr), getattr(module, scales_attr)
+                    )
                     # [HERE] we must do transpose(1, 2)
-                    dequantized = dequantized.transpose(1, 2).contiguous().to(target_device)
+                    dequantized = (
+                        dequantized.transpose(1, 2).contiguous().to(target_device)
+                    )
                     # TODO: this is perhaps necessary since if target_device is cpu, and the param was on gpu
                     if target_device == "cpu" and torch.cuda.is_available():
                         torch.cuda.empty_cache()
                     setattr(module, proj, torch.nn.Parameter(dequantized))
                     delattr(module, blocks_attr)
                     delattr(module, scales_attr)
+
     patch_function(transformers.integrations.mxfp4, "dequantize", dequantize)
 
     """
@@ -257,10 +281,12 @@ def patch_convert_moe_packed_tensors():
 
         scales = scales.to(torch.int32) - 127
 
-        assert blocks.shape[:-1] == scales.shape, f"{blocks.shape[:-1]=} does not match {scales.shape=}"
+        assert blocks.shape[:-1] == scales.shape, (
+            f"{blocks.shape[:-1]=} does not match {scales.shape=}"
+        )
 
         # Create LUT on CPU
-        lut = torch.tensor(FP4_VALUES, dtype=dtype, device='cpu')
+        lut = torch.tensor(FP4_VALUES, dtype=dtype, device="cpu")
 
         *prefix_shape, G, B = blocks.shape
         rows_total = math.prod(prefix_shape) * G
@@ -269,7 +295,7 @@ def patch_convert_moe_packed_tensors():
         scales = scales.reshape(rows_total, 1)
 
         # Create output tensor on CPU
-        out = torch.empty(rows_total, B * 2, dtype=dtype, device='cpu')
+        out = torch.empty(rows_total, B * 2, dtype=dtype, device="cpu")
 
         for r0 in range(0, rows_total, rows_per_chunk):
             r1 = min(r0 + rows_per_chunk, rows_total)
@@ -293,12 +319,20 @@ def patch_convert_moe_packed_tensors():
         return out
 
     # Add the new CPU function to the mxfp4 module
-    if hasattr(transformers.integrations.mxfp4, 'convert_moe_packed_tensors'):
-        transformers.integrations.mxfp4.convert_moe_packed_tensors_cpu = convert_moe_packed_tensors_cpu
-        if UNSLOTH_ENABLE_LOGGING:
-            logger.info("Unsloth: Successfully added convert_moe_packed_tensors_cpu function.")
+    if hasattr(transformers.integrations.mxfp4, "convert_moe_packed_tensors"):
+        transformers.integrations.mxfp4.convert_moe_packed_tensors_cpu = (
+            convert_moe_packed_tensors_cpu
+        )
+        if BITSLOTH_ENABLE_LOGGING:
+            logger.info(
+                "Unsloth: Successfully added convert_moe_packed_tensors_cpu function."
+            )
     else:
-        if UNSLOTH_ENABLE_LOGGING:
-            logger.info("Unsloth: Failed to add convert_moe_packed_tensors_cpu - original function not found.")
+        if BITSLOTH_ENABLE_LOGGING:
+            logger.info(
+                "Unsloth: Failed to add convert_moe_packed_tensors_cpu - original function not found."
+            )
+
+
 pass
 TEMPORARY_PATCHES.append(patch_convert_moe_packed_tensors)

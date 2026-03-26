@@ -23,19 +23,19 @@ from typing import Optional, Tuple
 from torch.autograd import Function
 
 # Get compile location
-UNSLOTH_COMPILE_LOCATION = os.environ.get(
-    "UNSLOTH_COMPILE_LOCATION", "unsloth_compiled_cache"
+BITSLOTH_COMPILE_LOCATION = os.environ.get(
+    "BITSLOTH_COMPILE_LOCATION", "unsloth_compiled_cache"
 )
 
 
 def _get_compile_location() -> str:
     return os.path.abspath(
-        os.environ.get("UNSLOTH_COMPILE_LOCATION", UNSLOTH_COMPILE_LOCATION)
+        os.environ.get("BITSLOTH_COMPILE_LOCATION", BITSLOTH_COMPILE_LOCATION)
     )
 
 
 def _log_info(message: str):
-    if os.environ.get("UNSLOTH_ENABLE_LOGGING", "0") == "1":
+    if os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1":
         print(message)
 
 
@@ -82,7 +82,10 @@ def _load_cached_moe_utils_module():
     try:
         module_name = "unsloth_cached_moe_utils"
         module = sys.modules.get(module_name, None)
-        if module is not None and os.path.abspath(getattr(module, "__file__", "")) == cache_file:
+        if (
+            module is not None
+            and os.path.abspath(getattr(module, "__file__", "")) == cache_file
+        ):
             _CACHED_MOE_UTILS_MODULE = module
             return module
 
@@ -111,6 +114,7 @@ def get_forward_moe_backend():
 
     _CACHED_FORWARD_MOE_BACKEND = forward_moe_backend
     return _CACHED_FORWARD_MOE_BACKEND
+
 
 # ============================================================================
 # Grouped MM wrapper
@@ -146,7 +150,8 @@ def _check_torch_grouped_mm_supported():
     A runtime probe is the only reliable check.
     """
     global _TORCH_GROUPED_MM_SUPPORTED
-    if _TORCH_GROUPED_MM_SUPPORTED is not None: return _TORCH_GROUPED_MM_SUPPORTED
+    if _TORCH_GROUPED_MM_SUPPORTED is not None:
+        return _TORCH_GROUPED_MM_SUPPORTED
 
     if not _TORCH_GROUPED_MM_AVAILABLE:
         _TORCH_GROUPED_MM_SUPPORTED = False
@@ -187,7 +192,8 @@ def _init_triton_allocator():
     This significantly reduces GPU utilization fluctuation.
     """
     global _TRITON_ALLOCATOR_INITIALIZED, _PERSISTENT_BUFFER
-    if _TRITON_ALLOCATOR_INITIALIZED: return
+    if _TRITON_ALLOCATOR_INITIALIZED:
+        return
 
     try:
         import triton
@@ -223,13 +229,19 @@ def _init_triton_allocator():
 
 def _check_grouped_gemm_available():
     """Check if Unsloth grouped GEMM kernels are available."""
-    if os.environ.get("UNSLOTH_DISABLE_MOE_TRITON", "0") == "1": return False
+    if os.environ.get("UNSLOTH_DISABLE_MOE_TRITON", "0") == "1":
+        return False
 
     global _GROUPED_GEMM_AVAILABLE
-    if _GROUPED_GEMM_AVAILABLE is not None: return _GROUPED_GEMM_AVAILABLE
+    if _GROUPED_GEMM_AVAILABLE is not None:
+        return _GROUPED_GEMM_AVAILABLE
 
     try:
-        from unsloth.kernels.moe.grouped_gemm.interface import grouped_gemm, supports_tma
+        from unsloth.kernels.moe.grouped_gemm.interface import (
+            grouped_gemm,
+            supports_tma,
+        )
+
         _GROUPED_GEMM_AVAILABLE = True
         _init_triton_allocator()
     except (ImportError, ModuleNotFoundError):
@@ -257,7 +269,9 @@ def select_moe_backend():
             return "unsloth_triton"
         if requested == "native_torch":
             return "native_torch"
-        _log_info(f"Unsloth: '{requested}' backend requested but is not available. Falling back to next available.")
+        _log_info(
+            f"Unsloth: '{requested}' backend requested but is not available. Falling back to next available."
+        )
 
     if _check_torch_grouped_mm_supported():
         _log_info("Unsloth: Using MoE backend 'grouped_mm'")
@@ -282,9 +296,13 @@ def forward_moe_backend(
 
     backend = select_moe_backend()
     if backend == "grouped_mm":
-        return forward_native_grouped_mm(self, hidden_states, top_k_index, top_k_weights)
+        return forward_native_grouped_mm(
+            self, hidden_states, top_k_index, top_k_weights
+        )
     if backend == "unsloth_triton":
-        return forward_triton_grouped_gemm(self, hidden_states, top_k_index, top_k_weights)
+        return forward_triton_grouped_gemm(
+            self, hidden_states, top_k_index, top_k_weights
+        )
     return forward_native_moe_loop(self, hidden_states, top_k_index, top_k_weights)
 
 
@@ -303,7 +321,9 @@ def _get_routing_indices(selected_experts, num_experts):
     flat_experts = selected_experts.view(-1)
 
     # bincount is faster than histc since it doesn't require float conversion
-    token_counts_by_expert = torch.bincount(flat_experts, minlength=num_experts).to(torch.int32)
+    token_counts_by_expert = torch.bincount(flat_experts, minlength=num_experts).to(
+        torch.int32
+    )
 
     # argsort with stable=True preserves order within each expert
     gather_indices = flat_experts.argsort(stable=True)
@@ -396,7 +416,9 @@ def _extract_lora_from_wrapper(
 
         # GET EXPERTS MODULE TO CHECK FOR REGISTERED EXTRACTOR
         if experts_module is None:
-            experts_module = wrapper.get_base_layer() if hasattr(wrapper, "get_base_layer") else None
+            experts_module = (
+                wrapper.get_base_layer() if hasattr(wrapper, "get_base_layer") else None
+            )
 
         # Check for model-specific LoRA extractor attached to the experts module
         extractor_fn = getattr(experts_module, "_unsloth_lora_extractor_fn", None)
@@ -452,7 +474,9 @@ def _extract_lora_weights(
     if num_experts is not None and not hasattr(param, "num_experts"):
         param.num_experts = num_experts
 
-    result = _extract_lora_from_wrapper(param, adapter_name, experts_module=experts_module)
+    result = _extract_lora_from_wrapper(
+        param, adapter_name, experts_module=experts_module
+    )
     if result is None:
         return None
     # Return first 3 elements (first_weight, second_weight, scaling) without num_experts
@@ -859,7 +883,9 @@ def forward_native_grouped_mm(
 
             # Step 1: permuted_input @ first_weight
             try:
-                lora_out = _grouped_mm_with_backward_fix(permuted_input, first_weight, offsets)
+                lora_out = _grouped_mm_with_backward_fix(
+                    permuted_input, first_weight, offsets
+                )
                 lora_out = lora_out.contiguous()
             except RuntimeError as e:
                 raise e
@@ -932,7 +958,9 @@ def forward_native_grouped_mm(
                         permuted_input, lora_A_t, offsets
                     )
                     lora_B_t = lora_B.transpose(-2, -1)
-                    lora_B_out = _grouped_mm_with_backward_fix(lora_A_out, lora_B_t, offsets)
+                    lora_B_out = _grouped_mm_with_backward_fix(
+                        lora_A_out, lora_B_t, offsets
+                    )
                     gate = gate + lora_B_out * scaling
 
             if _has_lora_adapters(self.w3):
@@ -944,7 +972,9 @@ def forward_native_grouped_mm(
                         permuted_input, lora_A_t, offsets
                     )
                     lora_B_t = lora_B.transpose(-2, -1)
-                    lora_B_out = _grouped_mm_with_backward_fix(lora_A_out, lora_B_t, offsets)
+                    lora_B_out = _grouped_mm_with_backward_fix(
+                        lora_A_out, lora_B_t, offsets
+                    )
                     up = up + lora_B_out * scaling
     else:
         raise AttributeError("MoE layer must have 'gate_up_proj' or 'w1'/'w3'.")
@@ -978,7 +1008,9 @@ def forward_native_grouped_mm(
         and hasattr(self, "down_proj")
         and _has_lora_adapters(self.down_proj)
     ):
-        down_lora = _extract_lora_weights(self.down_proj, num_experts=self.num_experts, experts_module=self)
+        down_lora = _extract_lora_weights(
+            self.down_proj, num_experts=self.num_experts, experts_module=self
+        )
 
     if hasattr(self, "down_proj"):
         # Get base weights
@@ -1008,7 +1040,9 @@ def forward_native_grouped_mm(
 
             # Step 2: result @ second_weight
             try:
-                lora_delta = _grouped_mm_with_backward_fix(lora_out, second_weight, offsets)
+                lora_delta = _grouped_mm_with_backward_fix(
+                    lora_out, second_weight, offsets
+                )
             except RuntimeError:
                 # Fallback to manual loop
                 lora_delta = torch.empty(
@@ -1049,7 +1083,9 @@ def forward_native_grouped_mm(
                 lora_A_t = lora_A.transpose(-2, -1).contiguous()
                 lora_A_out = _grouped_mm_with_backward_fix(inter, lora_A_t, offsets)
                 lora_B_t = lora_B.transpose(-2, -1).contiguous()
-                lora_B_out = _grouped_mm_with_backward_fix(lora_A_out, lora_B_t, offsets)
+                lora_B_out = _grouped_mm_with_backward_fix(
+                    lora_A_out, lora_B_t, offsets
+                )
                 mm2_out = mm2_out + lora_B_out * scaling
     else:
         raise AttributeError("MoE layer must have 'down_proj' or 'w2'.")
@@ -1104,7 +1140,6 @@ def forward_triton_grouped_gemm(
         self._unsloth_moe_configs = None
 
     use_separated_lora = _should_use_separated_lora()
-
 
     # Handle 3D inputs (batch_size, seq_len, hidden_dim)
     is_3d = hidden_states.dim() == 3
@@ -1236,7 +1271,7 @@ def forward_triton_grouped_gemm(
             second_weight,
             offsets,
             scaling,
-            grouped_mm_func=native_moe_grouped_mm
+            grouped_mm_func=native_moe_grouped_mm,
         )
 
         second_gemm_output = second_gemm_output + lora_delta

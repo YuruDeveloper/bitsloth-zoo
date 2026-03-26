@@ -25,7 +25,7 @@ from .common import (
     torch_compile,
     _torch_compile,
     get_torch_compile_options,
-    UNSLOTH_ENABLE_LOGGING,
+    BITSLOTH_ENABLE_LOGGING,
 )
 
 from .utils import (
@@ -276,13 +276,14 @@ def patch_qwen3_vl_moe():
             first_weight = first_weight.permute(0, 2, 1).contiguous()  # (E, in_dim, R)
 
             second_weight = weight_B.view(dim2, num_experts, rank_per_expert)
-            second_weight = second_weight.permute(1, 2, 0).contiguous()  # (E, R, out_dim)
+            second_weight = second_weight.permute(
+                1, 2, 0
+            ).contiguous()  # (E, R, out_dim)
 
             return first_weight, second_weight, scaling, num_experts
 
         # Register the extractor on the Experts class
         transformers.models.qwen3_vl_moe.modeling_qwen3_vl_moe.Qwen3VLMoeTextExperts._unsloth_lora_extractor_fn = _qwen3_vl_lora_extractor
-
 
         backend = select_moe_backend()
 
@@ -509,14 +510,16 @@ def patch_qwen3_vl_moe():
 
         # Preserve __qualname__ so _unsloth_get_batch_samples can detect
         # this is a ForConditionalGeneration forward and compute num_items_in_batch properly.
-        _patched_causal_lm_forward.__qualname__ = _original_causal_lm_forward.__qualname__
+        _patched_causal_lm_forward.__qualname__ = (
+            _original_causal_lm_forward.__qualname__
+        )
         Qwen3VLMoeForConditionalGeneration.forward = _patched_causal_lm_forward
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             logger.info(
                 "Unsloth: Patched Qwen3VLMoeForConditionalGeneration.forward for GRPO hidden states."
             )
     except Exception as e:
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             logger.warning(
                 f"Unsloth: Could not patch Qwen3VLMoeForConditionalGeneration.forward: {e}"
             )

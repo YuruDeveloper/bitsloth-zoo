@@ -23,7 +23,7 @@ import torch.nn.functional as F
 from .common import (
     TEMPORARY_PATCHES,
     torch_compile,
-    UNSLOTH_ENABLE_LOGGING,
+    BITSLOTH_ENABLE_LOGGING,
 )
 from .utils import (
     patch_function,
@@ -66,7 +66,9 @@ def _make_qwen_moe_lora_extractor():
                 hidden_dim = current.hidden_dim
             if hasattr(current, "intermediate_dim"):
                 intermediate_dim = current.intermediate_dim
-            if hasattr(current, "gate_up_proj") and hasattr(current.gate_up_proj, "shape"):
+            if hasattr(current, "gate_up_proj") and hasattr(
+                current.gate_up_proj, "shape"
+            ):
                 shape = current.gate_up_proj.shape
                 if len(shape) == 3:
                     hidden_dim = shape[2]
@@ -74,7 +76,11 @@ def _make_qwen_moe_lora_extractor():
 
         param_name = getattr(wrapper, "parameter_name", None)
 
-        if param_name == "down_proj" and intermediate_dim is not None and hidden_dim is not None:
+        if (
+            param_name == "down_proj"
+            and intermediate_dim is not None
+            and hidden_dim is not None
+        ):
             first_weight = weight_B.view(dim_B, num_experts, rank_per_expert)
             first_weight = first_weight.permute(1, 0, 2).contiguous()
             second_weight = weight_A.view(num_experts, rank_per_expert, dim_A)
@@ -112,10 +118,14 @@ def _make_qwen_moe_experts_forward(module_name: Optional[str] = None):
     return get_forward_moe_backend()
 
 
-def _make_qwen_moe_sparse_moe_block_forward(use_shared_expert: bool, module_name: Optional[str] = None):
+def _make_qwen_moe_sparse_moe_block_forward(
+    use_shared_expert: bool, module_name: Optional[str] = None
+):
     @torch.compiler.disable
     def sparse_moe_block_forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
-        use_shared_expert = hasattr(self, "shared_expert") and hasattr(self, "shared_expert_gate")
+        use_shared_expert = hasattr(self, "shared_expert") and hasattr(
+            self, "shared_expert_gate"
+        )
         if hidden_states.dim() == 3:
             batch_size, sequence_length, hidden_dim = hidden_states.shape
         else:
@@ -135,18 +145,29 @@ def _make_qwen_moe_sparse_moe_block_forward(use_shared_expert: bool, module_name
         else:
             router_logits = gate_output
             top_k = getattr(self.gate, "top_k", getattr(self, "top_k", 2))
-            norm_topk_prob = getattr(self.gate, "norm_topk_prob", getattr(self, "norm_topk_prob", False))
+            norm_topk_prob = getattr(
+                self.gate, "norm_topk_prob", getattr(self, "norm_topk_prob", False)
+            )
 
             routing_weights = F.softmax(router_logits, dim=1, dtype=torch.float)
-            routing_weights, selected_experts = torch.topk(routing_weights, top_k, dim=-1)
+            routing_weights, selected_experts = torch.topk(
+                routing_weights, top_k, dim=-1
+            )
             if norm_topk_prob:
-                routing_weights = routing_weights / routing_weights.sum(dim=-1, keepdim=True)
+                routing_weights = routing_weights / routing_weights.sum(
+                    dim=-1, keepdim=True
+                )
             routing_weights = routing_weights.to(hidden_states.dtype)
 
-        final_hidden_states = self.experts(hidden_states_reshaped, selected_experts, routing_weights)
+        final_hidden_states = self.experts(
+            hidden_states_reshaped, selected_experts, routing_weights
+        )
 
         if use_shared_expert:
-            shared_expert_output = F.sigmoid(self.shared_expert_gate(hidden_states_reshaped)) * shared_expert_output
+            shared_expert_output = (
+                F.sigmoid(self.shared_expert_gate(hidden_states_reshaped))
+                * shared_expert_output
+            )
             final_hidden_states = final_hidden_states + shared_expert_output
 
         if hidden_states.dim() == 3:
@@ -180,7 +201,9 @@ def _patch_causal_lm_forward_for_hidden_states(
         logits_to_keep=0,
         **kwargs,
     ):
-        RETURN_HIDDEN_STATES = os.environ.get("UNSLOTH_RETURN_HIDDEN_STATES", "0") == "1"
+        RETURN_HIDDEN_STATES = (
+            os.environ.get("UNSLOTH_RETURN_HIDDEN_STATES", "0") == "1"
+        )
 
         if not RETURN_HIDDEN_STATES:
             return _original_causal_lm_forward(
@@ -212,7 +235,11 @@ def _patch_causal_lm_forward_for_hidden_states(
 
         hidden_states = outputs.last_hidden_state
         if logits_to_keep != 0:
-            slice_indices = slice(-logits_to_keep, None) if isinstance(logits_to_keep, int) else logits_to_keep
+            slice_indices = (
+                slice(-logits_to_keep, None)
+                if isinstance(logits_to_keep, int)
+                else logits_to_keep
+            )
             hidden_states = hidden_states[:, slice_indices, :]
 
         extra_output_kwargs = {}
@@ -230,7 +257,7 @@ def _patch_causal_lm_forward_for_hidden_states(
 
     _patched_causal_lm_forward.__qualname__ = _original_causal_lm_forward.__qualname__
     causal_lm_cls.forward = _patched_causal_lm_forward
-    if UNSLOTH_ENABLE_LOGGING:
+    if BITSLOTH_ENABLE_LOGGING:
         logger.info(f"Unsloth: Patched {model_label}.forward for GRPO hidden states.")
 
 
@@ -244,18 +271,23 @@ def patch_qwen3_moe():
 
     try:
         import transformers.models.qwen3_moe.modeling_qwen3_moe
+
         transformers.models.qwen3_moe.modeling_qwen3_moe.Qwen3MoeSparseMoeBlock
     except Exception as e:
-        return raise_error("transformers.models.qwen3_moe.modeling_qwen3_moe.Qwen3MoeSparseMoeBlock", e)
+        return raise_error(
+            "transformers.models.qwen3_moe.modeling_qwen3_moe.Qwen3MoeSparseMoeBlock", e
+        )
     old_transformers = True
     try:
         import transformers.models.qwen3_moe.modeling_qwen3_moe
-        transformers.models.qwen3_moe.modeling_qwen3_moe.Qwen3MoeExperts # New transformers has this
+
+        transformers.models.qwen3_moe.modeling_qwen3_moe.Qwen3MoeExperts  # New transformers has this
         old_transformers = False
     except Exception as e:
         old_transformers = True
 
     if old_transformers:
+
         def old_forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
             """ """
             batch_size, sequence_length, hidden_dim = hidden_states.shape
@@ -264,19 +296,25 @@ def patch_qwen3_moe():
             router_logits = self.gate(hidden_states)
 
             routing_weights = F.softmax(router_logits, dim=1, dtype=torch.float)
-            routing_weights, selected_experts = torch.topk(routing_weights, self.top_k, dim=-1)
+            routing_weights, selected_experts = torch.topk(
+                routing_weights, self.top_k, dim=-1
+            )
             if self.norm_topk_prob:  # only diff with mixtral sparse moe block!
                 routing_weights /= routing_weights.sum(dim=-1, keepdim=True)
             # we cast back to the input dtype
             routing_weights = routing_weights.to(hidden_states.dtype)
 
             final_hidden_states = torch.zeros(
-                (batch_size * sequence_length, hidden_dim), dtype=hidden_states.dtype, device=hidden_states.device
+                (batch_size * sequence_length, hidden_dim),
+                dtype=hidden_states.dtype,
+                device=hidden_states.device,
             )
 
             # One hot encode the selected experts to create an expert mask
             # this will be used to easily index which expert is going to be sollicitated
-            expert_mask = torch.nn.functional.one_hot(selected_experts, num_classes=self.num_experts).permute(2, 1, 0)
+            expert_mask = torch.nn.functional.one_hot(
+                selected_experts, num_classes=self.num_experts
+            ).permute(2, 1, 0)
 
             # Loop over all available experts in the model and perform the computation on each expert
             expert_hit = torch.greater(expert_mask.sum(dim=(-1, -2)), 0).nonzero()
@@ -288,25 +326,37 @@ def patch_qwen3_moe():
                 # the current expert. We need to make sure to multiply the output hidden
                 # states by `routing_weights` on the corresponding tokens (top-1 and top-2)
                 current_state = hidden_states[None, top_x].reshape(-1, hidden_dim)
-                current_hidden_states = expert_layer(current_state) * routing_weights[top_x, idx, None]
+                current_hidden_states = (
+                    expert_layer(current_state) * routing_weights[top_x, idx, None]
+                )
 
                 # However `index_add_` only support torch tensors for indexing so we'll use
                 # the `top_x` tensor here.
-                final_hidden_states.index_add_(0, top_x, current_hidden_states.to(hidden_states.dtype))
-            final_hidden_states = final_hidden_states.reshape(batch_size, sequence_length, hidden_dim)
+                final_hidden_states.index_add_(
+                    0, top_x, current_hidden_states.to(hidden_states.dtype)
+                )
+            final_hidden_states = final_hidden_states.reshape(
+                batch_size, sequence_length, hidden_dim
+            )
             return final_hidden_states, router_logits
 
-        @torch_compile(dynamic = True, fullgraph = True)
+        @torch_compile(dynamic=True, fullgraph=True)
         def router_forward(self, hidden_states):
             router_logits = self.gate(hidden_states)
 
             routing_weights = F.softmax(router_logits, dim=1, dtype=torch.float32)
-            routing_weights, selected_experts = torch.topk(routing_weights, self.top_k, dim=-1)
+            routing_weights, selected_experts = torch.topk(
+                routing_weights, self.top_k, dim=-1
+            )
             if self.norm_topk_prob:  # only diff with mixtral sparse moe block!
-                routing_weights = routing_weights / routing_weights.sum(dim=-1, keepdim=True)
+                routing_weights = routing_weights / routing_weights.sum(
+                    dim=-1, keepdim=True
+                )
             # we cast back to the input dtype
             routing_weights = routing_weights.to(hidden_states.dtype)
-            router_scores = torch.zeros_like(router_logits, dtype = hidden_states.dtype).scatter_(1, selected_experts, routing_weights)
+            router_scores = torch.zeros_like(
+                router_logits, dtype=hidden_states.dtype
+            ).scatter_(1, selected_experts, routing_weights)
             return router_scores, selected_experts, router_logits
 
         def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
@@ -321,9 +371,13 @@ def patch_qwen3_moe():
                 sequence_length = total_tokens
 
             hidden_states = hidden_states.view(-1, hidden_dim)
-            router_scores, selected_experts, router_logits = router_forward(self, hidden_states)
+            router_scores, selected_experts, router_logits = router_forward(
+                self, hidden_states
+            )
             final_hidden_states = torch.zeros(
-                (batch_size * sequence_length, hidden_dim), dtype=torch.float32, device=hidden_states.device
+                (batch_size * sequence_length, hidden_dim),
+                dtype=torch.float32,
+                device=hidden_states.device,
             )
 
             # one hot encode the selected experts to create an expert mask
@@ -337,17 +391,24 @@ def patch_qwen3_moe():
                 # the current expert. We need to make sure to multiply the output hidden
                 # states by `routing_weights` on the corresponding tokens (top-1 and top-2)
                 current_state = hidden_states[token_idx].reshape(-1, hidden_dim)
-                current_hidden_states = expert_layer(current_state) * router_scores[token_idx, expert_idx, None]
+                current_hidden_states = (
+                    expert_layer(current_state)
+                    * router_scores[token_idx, expert_idx, None]
+                )
 
                 # However `index_add_` only support torch tensors for indexing so we'll use
                 # the `top_x` tensor here.
-                final_hidden_states.index_add_(0, token_idx, current_hidden_states.to(torch.float32))
+                final_hidden_states.index_add_(
+                    0, token_idx, current_hidden_states.to(torch.float32)
+                )
 
             if is_3d:
-                final_hidden_states = final_hidden_states.reshape(batch_size, sequence_length, hidden_dim)
+                final_hidden_states = final_hidden_states.reshape(
+                    batch_size, sequence_length, hidden_dim
+                )
             return final_hidden_states.to(hidden_states.dtype), router_logits
     else:
-    # ====================================================================
+        # ====================================================================
         # New transformers (5.0+) with stacked expert weights
         # Uses Triton grouped GEMM kernels for high performance
         # ====================================================================
@@ -365,10 +426,22 @@ def patch_qwen3_moe():
     # For old transformers, patch Qwen3MoeSparseMoeBlock
     # For new transformers, patch Qwen3MoeExperts (which has the expert loop)
     if old_transformers:
-        patch_function(transformers.models.qwen3_moe.modeling_qwen3_moe.Qwen3MoeSparseMoeBlock, "forward", forward)
+        patch_function(
+            transformers.models.qwen3_moe.modeling_qwen3_moe.Qwen3MoeSparseMoeBlock,
+            "forward",
+            forward,
+        )
     else:
-        patch_function(transformers.models.qwen3_moe.modeling_qwen3_moe.Qwen3MoeExperts, "forward", forward)
-        patch_function(transformers.models.qwen3_moe.modeling_qwen3_moe.Qwen3MoeSparseMoeBlock, "forward", sparse_moe_block_forward)
+        patch_function(
+            transformers.models.qwen3_moe.modeling_qwen3_moe.Qwen3MoeExperts,
+            "forward",
+            forward,
+        )
+        patch_function(
+            transformers.models.qwen3_moe.modeling_qwen3_moe.Qwen3MoeSparseMoeBlock,
+            "forward",
+            sparse_moe_block_forward,
+        )
 
     # ====================================================================
     # Patch Qwen3MoeForCausalLM.forward for GRPO training
@@ -379,6 +452,7 @@ def patch_qwen3_moe():
             Qwen3MoeForCausalLM,
             MoeCausalLMOutputWithPast,
         )
+
         _patch_causal_lm_forward_for_hidden_states(
             Qwen3MoeForCausalLM,
             MoeCausalLMOutputWithPast,
@@ -389,8 +463,9 @@ def patch_qwen3_moe():
             },
         )
     except Exception as e:
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             logger.warning(f"Unsloth: Could not patch Qwen3MoeForCausalLM.forward: {e}")
+
 
 pass
 TEMPORARY_PATCHES.append(patch_qwen3_moe)

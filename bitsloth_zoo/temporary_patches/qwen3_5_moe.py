@@ -16,7 +16,7 @@
 
 from .common import (
     TEMPORARY_PATCHES,
-    UNSLOTH_ENABLE_LOGGING,
+    BITSLOTH_ENABLE_LOGGING,
 )
 from .utils import (
     patch_function,
@@ -35,6 +35,7 @@ from .qwen3_moe import (
 def patch_qwen3_5_moe():
     try:
         import transformers.models.qwen3_5_moe.modeling_qwen3_5_moe
+
         transformers.models.qwen3_5_moe.modeling_qwen3_5_moe.Qwen3_5MoeSparseMoeBlock
     except Exception as e:
         return
@@ -44,14 +45,17 @@ def patch_qwen3_5_moe():
 
     try:
         import transformers.models.qwen3_5_moe.modeling_qwen3_5_moe
+
         transformers.models.qwen3_5_moe.modeling_qwen3_5_moe.Qwen3_5MoeExperts._unsloth_lora_extractor_fn = _qwen3_5_lora_extractor
     except Exception as e:
-        if UNSLOTH_ENABLE_LOGGING:
-            logger.warning(f"Unsloth: Could not register Qwen3_5MoeExperts LoRA extractor: {e}")
+        if BITSLOTH_ENABLE_LOGGING:
+            logger.warning(
+                f"Unsloth: Could not register Qwen3_5MoeExperts LoRA extractor: {e}"
+            )
 
     try:
         forward = _make_qwen_moe_experts_forward(
-            module_name="unsloth_zoo.temporary_patches.qwen3_5_moe"
+            module_name="bitsloth_zoo.temporary_patches.qwen3_5_moe"
         )
         patch_function(
             transformers.models.qwen3_5_moe.modeling_qwen3_5_moe.Qwen3_5MoeExperts,
@@ -61,7 +65,7 @@ def patch_qwen3_5_moe():
 
         sparse_moe_block_forward = _make_qwen_moe_sparse_moe_block_forward(
             use_shared_expert=True,
-            module_name="unsloth_zoo.temporary_patches.qwen3_5_moe",
+            module_name="bitsloth_zoo.temporary_patches.qwen3_5_moe",
         )
         patch_function(
             transformers.models.qwen3_5_moe.modeling_qwen3_5_moe.Qwen3_5MoeSparseMoeBlock,
@@ -69,14 +73,17 @@ def patch_qwen3_5_moe():
             sparse_moe_block_forward,
         )
     except Exception as e:
-        if UNSLOTH_ENABLE_LOGGING:
-            logger.warning(f"Unsloth: Could not patch Qwen3_5MoeExperts or Qwen3_5MoeSparseMoeBlock: {e}")
+        if BITSLOTH_ENABLE_LOGGING:
+            logger.warning(
+                f"Unsloth: Could not patch Qwen3_5MoeExperts or Qwen3_5MoeSparseMoeBlock: {e}"
+            )
 
     try:
         from transformers.models.qwen3_5_moe.modeling_qwen3_5_moe import (
             Qwen3_5MoeForCausalLM,
             MoeCausalLMOutputWithPast,
         )
+
         _patch_causal_lm_forward_for_hidden_states(
             Qwen3_5MoeForCausalLM,
             MoeCausalLMOutputWithPast,
@@ -87,7 +94,10 @@ def patch_qwen3_5_moe():
             },
         )
     except Exception as e:
-        if UNSLOTH_ENABLE_LOGGING:
-            logger.warning(f"Unsloth: Could not patch Qwen3_5MoeForCausalLM.forward: {e}")
+        if BITSLOTH_ENABLE_LOGGING:
+            logger.warning(
+                f"Unsloth: Could not patch Qwen3_5MoeForCausalLM.forward: {e}"
+            )
+
 
 TEMPORARY_PATCHES.append(patch_qwen3_5_moe)

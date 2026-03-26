@@ -1,4 +1,3 @@
-
 # Unsloth Zoo - Utilities for Unsloth
 # Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
 #
@@ -20,7 +19,7 @@ __all__ = [
 ]
 
 import os
-from .temporary_patches.common import torch_compile, UNSLOTH_ENABLE_LOGGING
+from .temporary_patches.common import torch_compile, BITSLOTH_ENABLE_LOGGING
 from .log import logger
 from torch import Tensor
 import torch
@@ -30,7 +29,7 @@ from torch.nn.functional import (
     handle_torch_function,
     has_torch_function,
     has_torch_function_variadic,
-    normalize, 
+    normalize,
     np,
 )
 from typing import Callable, List, Optional, Tuple, Union
@@ -61,6 +60,8 @@ def layer_norm(
     return torch.layer_norm(
         input, normalized_shape, weight, bias, eps, torch.backends.cudnn.enabled
     ).to(input.dtype)
+
+
 pass
 
 
@@ -163,6 +164,8 @@ def cross_entropy(
         ignore_index,
         label_smoothing,
     ).to(input.dtype)
+
+
 pass
 
 
@@ -176,16 +179,20 @@ def patch_torch_functions():
     # if not hasattr(torch.nn.functional, "_uncompiled_cross_entropy"):
     #     torch.nn.functional._uncompiled_cross_entropy = torch.nn.functional.cross_entropy
     #     torch.nn.functional.cross_entropy = cross_entropy
+
+
 pass
 
 
 # Patch TorchAO functions
 try:
     import torchao.quantization.qat.fake_quantizer
+
     if not hasattr(torchao.quantization.qat.fake_quantizer, "__UNSLOTH_PATCHED__"):
         qat_classes = dir(torchao.quantization.qat.fake_quantizer)
         for qat_class in qat_classes:
-            if qat_class.startswith("_"): continue
+            if qat_class.startswith("_"):
+                continue
             qat_class = getattr(torchao.quantization.qat.fake_quantizer, qat_class)
             if hasattr(qat_class, "forward"):
                 # Skip already compiled functions
@@ -193,6 +200,6 @@ try:
                     qat_class.forward = torch_compile(qat_class.forward)
         torchao.quantization.qat.fake_quantizer.__UNSLOTH_PATCHED__ = True
 except Exception as e:
-    if UNSLOTH_ENABLE_LOGGING:
+    if BITSLOTH_ENABLE_LOGGING:
         logger.warning(f"TorchAO patching failed with exception = {str(e)}")
 pass

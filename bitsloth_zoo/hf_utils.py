@@ -21,8 +21,10 @@ import torch
 import json
 import re
 from .log import logger
+
 try:
     from transformers import PreTrainedConfig
+
     PretrainedConfig = PreTrainedConfig
 except:
     from transformers import PretrainedConfig
@@ -39,20 +41,24 @@ __all__ = [
     "get_auto_processor",
 ]
 
+
 def dtype_from_config(config):
-    check_order = ['dtype', 'torch_dtype']
+    check_order = ["dtype", "torch_dtype"]
     if HAS_TORCH_DTYPE:
-        check_order = ['torch_dtype', 'dtype']
+        check_order = ["torch_dtype", "dtype"]
     dtype = None
     for dtype_name in check_order:
         if dtype is None:
             dtype = getattr(config, dtype_name, None)
     return dtype
 
+
 def set_dtype_in_config(config, dtype):
     try:
         # if dtype is not a string, convert it to a string
-        string_dtype = str(dtype).split(".")[-1] if isinstance(dtype, torch.dtype) else dtype
+        string_dtype = (
+            str(dtype).split(".")[-1] if isinstance(dtype, torch.dtype) else dtype
+        )
         if HAS_TORCH_DTYPE:
             setattr(config, "torch_dtype", string_dtype)
         else:
@@ -60,16 +66,20 @@ def set_dtype_in_config(config, dtype):
     except:
         set_dtype_in_config_fallback(config, string_dtype)
 
+
 def set_dtype_in_config_fallback(config, dtype):
     try:
-        string_dtype = str(dtype).split(".")[-1] if isinstance(dtype, torch.dtype) else dtype
+        string_dtype = (
+            str(dtype).split(".")[-1] if isinstance(dtype, torch.dtype) else dtype
+        )
         if HAS_TORCH_DTYPE:
             config.__dict__["torch_dtype"] = string_dtype
         else:
             config.__dict__["dtype"] = string_dtype
     except:
-        if os.environ.get("UNSLOTH_ENABLE_LOGGING", "0") == "1":
+        if os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1":
             print("Unsloth: Failed to set dtype in config, fallback failed too")
+
 
 def add_dtype_kwargs(dtype, kwargs_dict=None):
     if kwargs_dict is None:
@@ -79,6 +89,7 @@ def add_dtype_kwargs(dtype, kwargs_dict=None):
     else:
         kwargs_dict["dtype"] = dtype
     return kwargs_dict
+
 
 def _dtype_stringify(x):
     # Convert *values* (not the config) into JSON-safe strings when they are dtypes
@@ -96,6 +107,7 @@ def _dtype_stringify(x):
 
     return x
 
+
 def _normalize_dict_dtypes(obj):
     if isinstance(obj, dict):
         return {k: _normalize_dict_dtypes(v) for k, v in obj.items()}
@@ -107,26 +119,31 @@ def _normalize_dict_dtypes(obj):
 
 
 def get_transformers_model_type(config, trust_remote_code=False):
-    """ Gets model_type from config file - can be PEFT or normal HF """
+    """Gets model_type from config file - can be PEFT or normal HF"""
     if config is None:
         raise RuntimeError(
-            f"Unsloth: No config file found - are you sure the `model_name` is correct?\n"\
-            f"If you're using a model on your local device, confirm if the folder location exists.\n"\
+            f"Unsloth: No config file found - are you sure the `model_name` is correct?\n"
+            f"If you're using a model on your local device, confirm if the folder location exists.\n"
             f"If you're using a HuggingFace online model, check if it exists."
         )
     model_types = None
 
     from peft import PeftConfig
+
     # Handle model.peft_config["default"]
     if type(config) is dict and "default" in config:
         config = config["default"]
-    
+
     retry_config = False
     if issubclass(type(config), PeftConfig):
-        model_type_list = re.finditer(r"transformers\.models\.([^\.]{2,})\.modeling_\1", str(config))
+        model_type_list = re.finditer(
+            r"transformers\.models\.([^\.]{2,})\.modeling_\1", str(config)
+        )
         model_type_list = list(model_type_list)
         if len(model_type_list) == 0:
-            logger.info("*** `model_type_list` in `get_transformers_model_type` is None!")
+            logger.info(
+                "*** `model_type_list` in `get_transformers_model_type` is None!"
+            )
         if len(model_type_list) != 0:
             # Use transformers.models.gpt_oss.modeling_gpt_oss
             model_type = model_type_list[0].group(1)
@@ -139,9 +156,12 @@ def get_transformers_model_type(config, trust_remote_code=False):
                 model_type = model_type.rsplit("For", 1)[0].lower()
                 # Find exact name of modeling path
                 import transformers.models
+
                 supported_model_types = dir(transformers.models)
                 for modeling_file in supported_model_types:
-                    if model_type == modeling_file.lower().replace("_", "").replace(".", "_").replace("-", "_"):
+                    if model_type == modeling_file.lower().replace("_", "").replace(
+                        ".", "_"
+                    ).replace("-", "_"):
                         model_types = [modeling_file]
                         break
             pass
@@ -150,7 +170,9 @@ def get_transformers_model_type(config, trust_remote_code=False):
         # Get original base model
         base_model_name_or_path = getattr(config, "base_model_name_or_path", None)
         if base_model_name_or_path is None:
-            raise TypeError("Unsloth: adapter_config.json's `base_model_name_or_path` is None?")
+            raise TypeError(
+                "Unsloth: adapter_config.json's `base_model_name_or_path` is None?"
+            )
         base_model_name_or_path = str(base_model_name_or_path)
         # Set model name for patching purposes
         os.environ["UNSLOTH_MODEL_NAME"] = base_model_name_or_path.lower()
@@ -158,6 +180,7 @@ def get_transformers_model_type(config, trust_remote_code=False):
         # Last resort use model name unsloth/gpt-oss-20b-unsloth-bnb-4bit
         if model_types is None:
             from transformers import AutoConfig
+
             try:
                 config = AutoConfig.from_pretrained(
                     base_model_name_or_path,
@@ -169,6 +192,7 @@ def get_transformers_model_type(config, trust_remote_code=False):
                 raise error
             except Exception as error:
                 from transformers import __version__ as transformers_version
+
                 autoconfig_error = str(error)
                 if "architecture" in autoconfig_error:
                     raise ValueError(
@@ -184,6 +208,7 @@ def get_transformers_model_type(config, trust_remote_code=False):
     # Check since we might have tried AutoConfig fallback last resort for LoRA
     if retry_config:
         from collections.abc import Mapping, Sequence
+
         def find(data, target_key):
             stack = [data]
             while stack:
@@ -194,13 +219,20 @@ def get_transformers_model_type(config, trust_remote_code=False):
                         yield obj[target_key]
                     # Keep walking into nested values
                     stack.extend(obj.values())
-                elif isinstance(obj, Sequence) and not isinstance(obj, (str, bytes, bytearray)):
+                elif isinstance(obj, Sequence) and not isinstance(
+                    obj, (str, bytes, bytearray)
+                ):
                     # Walk sequences (lists/tuples/sets), but not strings/bytes
                     stack.extend(obj)
-        model_types = list(find(getattr(config, "to_dict", lambda *args, **kwargs: {})(), "model_type"))
+
+        model_types = list(
+            find(getattr(config, "to_dict", lambda *args, **kwargs: {})(), "model_type")
+        )
     pass
     if model_types is None:
-        raise TypeError(f"Unsloth: Cannot determine model type for config file: {str(config)}")
+        raise TypeError(
+            f"Unsloth: Cannot determine model type for config file: {str(config)}"
+        )
     # Standardize model_type
     final_model_types = []
     for model_type in model_types:
@@ -214,10 +246,14 @@ def get_transformers_model_type(config, trust_remote_code=False):
     # Check if model type is correct
     # Gemma-3 270M has `gemma3_text` which is wrong
     import transformers.models
+
     all_model_types = dir(transformers.models)
     # Models with trust_remote_code that are NOT in transformers.models
     # but should be kept as-is (not truncated).
-    _REMOTE_CODE_MODEL_TYPES = {"nemotron_h", "nemotronh_nano_vl_v2",}
+    _REMOTE_CODE_MODEL_TYPES = {
+        "nemotron_h",
+        "nemotronh_nano_vl_v2",
+    }
     found_type = False
     for j, model_type in enumerate(final_model_types):
         if model_type in _REMOTE_CODE_MODEL_TYPES:
@@ -225,7 +261,9 @@ def get_transformers_model_type(config, trust_remote_code=False):
         elif model_type not in all_model_types:
             # Try splitting on _ gemma3_text -> gemma3
             model_types = list(model_type)
-            model_types = ["".join(model_types[:i]) for i in range(len(model_types), 0, -1)]
+            model_types = [
+                "".join(model_types[:i]) for i in range(len(model_types), 0, -1)
+            ]
             for current_model_type in model_types:
                 if current_model_type in all_model_types:
                     final_model_types[j] = current_model_type
@@ -238,12 +276,15 @@ def get_transformers_model_type(config, trust_remote_code=False):
         logger.info(f"*** Could not find model_type for config = {str(config)} ***")
     final_model_types = sorted(final_model_types)
     return final_model_types
+
+
 pass
 
 
 def fix_lora_auto_mapping(model):
     # Fix LoraConfig's auto_mapping_dict
-    if getattr(model, "peft_config", None) is None: return
+    if getattr(model, "peft_config", None) is None:
+        return
 
     peft_config = model.peft_config
     values = peft_config.values() if type(peft_config) is dict else [peft_config]
@@ -251,7 +292,7 @@ def fix_lora_auto_mapping(model):
         # See https://github.com/huggingface/peft/blob/20a9829f76419149f5e447b856bc0abe865c28a7/src/peft/peft_model.py#L347
         if getattr(model, "_get_base_model_class", None) is not None:
             base_model_class = model._get_base_model_class(
-                is_prompt_tuning = getattr(config, "is_prompt_learning", False),
+                is_prompt_tuning=getattr(config, "is_prompt_learning", False),
             )
         elif getattr(model, "base_model", None) is not None:
             base_model_class = model.base_model.__class__
@@ -262,11 +303,13 @@ def fix_lora_auto_mapping(model):
         auto_mapping_dict = {
             "base_model_class": base_model_class.__name__,
             "parent_library": parent_library,
-            "unsloth_fixed" : True,
+            "unsloth_fixed": True,
         }
         if getattr(config, "auto_mapping", None) is None:
             config.auto_mapping = auto_mapping_dict
     pass
+
+
 pass
 
 
@@ -279,7 +322,7 @@ def get_auto_processor(name, **kwargs):
     except:
         return None
 
-    reversal_map = { v : k for k, v in PROCESSOR_MAPPING_NAMES.items() }
+    reversal_map = {v: k for k, v in PROCESSOR_MAPPING_NAMES.items()}
     processor_class = None
     model_type = None
 
@@ -297,7 +340,7 @@ def get_auto_processor(name, **kwargs):
                 processor_class = config["processor_class"]
                 # Strip _Unsloth_Patched_ prefix from old saves (issue #4085)
                 if processor_class.startswith("_Unsloth_Patched_"):
-                    processor_class = processor_class[len("_Unsloth_Patched_"):]
+                    processor_class = processor_class[len("_Unsloth_Patched_") :]
                 model_type = reversal_map[processor_class]
                 break
             except:
@@ -312,6 +355,7 @@ def get_auto_processor(name, **kwargs):
         if os.path.exists(adapter_config):
             try:
                 from peft import PeftConfig
+
                 peft_config = PeftConfig.from_pretrained(name)
                 model_type = get_transformers_model_type(peft_config)[0]
             except:
@@ -320,6 +364,7 @@ def get_auto_processor(name, **kwargs):
     if model_type is None:
         # Try doing AutoTokenizer instead
         from transformers import AutoTokenizer
+
         try:
             return AutoTokenizer.from_pretrained(name, **kwargs)
         except:
@@ -331,29 +376,41 @@ def get_auto_processor(name, **kwargs):
     temp_name = temp_directory.name
 
     # Make a fake config.json file with just the model_type
-    config_file = {"model_type" : model_type}
+    config_file = {"model_type": model_type}
     with open(os.path.join(temp_name, "config.json"), "w") as f:
         f.write(json.dumps(config_file))
 
     # Copy other files
     filenames = os.listdir(name)
     for filename in filenames:
-        if "model" not in filename and "safetensors" not in filename and "bin" not in filename:
+        if (
+            "model" not in filename
+            and "safetensors" not in filename
+            and "bin" not in filename
+        ):
             try:
-                shutil.copy(os.path.join(name, filename), os.path.join(temp_name, filename))
+                shutil.copy(
+                    os.path.join(name, filename), os.path.join(temp_name, filename)
+                )
             except:
                 pass
     pass
 
     # Fix _Unsloth_Patched_ prefix in copied config files (issue #4085)
-    for cfg_name in ["processor_config.json", "preprocessor_config.json", "tokenizer_config.json"]:
+    for cfg_name in [
+        "processor_config.json",
+        "preprocessor_config.json",
+        "tokenizer_config.json",
+    ]:
         cfg_path = os.path.join(temp_name, cfg_name)
         if os.path.exists(cfg_path):
             try:
                 with open(cfg_path, "r", encoding="utf-8") as f:
                     cfg = json.load(f)
                 if cfg.get("processor_class", "").startswith("_Unsloth_Patched_"):
-                    cfg["processor_class"] = cfg["processor_class"][len("_Unsloth_Patched_"):]
+                    cfg["processor_class"] = cfg["processor_class"][
+                        len("_Unsloth_Patched_") :
+                    ]
                     with open(cfg_path, "w", encoding="utf-8") as f:
                         json.dump(cfg, f, indent=2, ensure_ascii=False)
             except:
@@ -361,6 +418,7 @@ def get_auto_processor(name, **kwargs):
 
     # Try importing again!
     from transformers import AutoProcessor
+
     try:
         processor = AutoProcessor.from_pretrained(temp_name, **kwargs)
     except:
@@ -370,9 +428,12 @@ def get_auto_processor(name, **kwargs):
     # Try doing AutoTokenizer instead
     if processor is None:
         from transformers import AutoTokenizer
+
         try:
             return AutoTokenizer.from_pretrained(name, **kwargs)
         except:
             raise TypeError(f"Unsloth: Failed loading a AutoProcessor from `{name}`")
     return processor
+
+
 pass

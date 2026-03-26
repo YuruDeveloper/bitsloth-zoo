@@ -15,7 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 __all__ = [
-    "UNSLOTH_COMPILE_LOCATION",
+    "BITSLOTH_COMPILE_LOCATION",
     "get_transformers_model_type",
     "unsloth_compile_transformers",
     "create_new_function",
@@ -66,13 +66,13 @@ except:
 global COMBINED_UNSLOTH_NAME
 COMBINED_UNSLOTH_NAME = "unsloth_compiled_module"
 
-global UNSLOTH_COMPILE_LOCATION
-if "UNSLOTH_COMPILE_LOCATION" not in globals():
-    _loc = os.getenv("UNSLOTH_COMPILE_LOCATION", None)
+global BITSLOTH_COMPILE_LOCATION
+if "BITSLOTH_COMPILE_LOCATION" not in globals():
+    _loc = os.getenv("BITSLOTH_COMPILE_LOCATION", None)
     if _loc:
-        UNSLOTH_COMPILE_LOCATION = _loc
+        BITSLOTH_COMPILE_LOCATION = _loc
     else:
-        UNSLOTH_COMPILE_LOCATION = "unsloth_compiled_cache"
+        BITSLOTH_COMPILE_LOCATION = "unsloth_compiled_cache"
 
 global UNSLOTH_COMPILE_USE_TEMP
 UNSLOTH_COMPILE_USE_TEMP = False
@@ -121,7 +121,7 @@ DISABLED_KEYWORDS = [
     "causal_mask[start:end, start:end] = 0",  # Pixtral Dynamic slicing on data-dependent value is not supported
     "LAYER_PATTERN_TO_MASK_FUNCTION_MAPPING",  # Gemma3 create_masks_for_generate
     "create_causal_mask(**mask_kwargs)",  # Gemma3 create_masks_for_generate
-    "create_causal_mask_mapping",        # Gemma3 5.x (raises ValueError, can't be compiled)
+    "create_causal_mask_mapping",  # Gemma3 5.x (raises ValueError, can't be compiled)
     "return inner_mask",  # Gemma3 token_type_ids_mask_function returns closure, can't trace generator
     "compute_mup_vector",  # used in falcon h1 init and not needed to compile + inductor complains
     "segment_sum",  # falcon h1
@@ -173,16 +173,16 @@ pass
 from typing import Any, List, Optional, Tuple, Union, Dict, Set, Callable
 import math
 
-UNSLOTH_ENABLE_LOGGING = os.environ.get("UNSLOTH_ENABLE_LOGGING", "0") == "1"
-UNSLOTH_ENABLE_CCE = os.environ.get("UNSLOTH_ENABLE_CCE", "1") == "1"
+BITSLOTH_ENABLE_LOGGING = os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1"
+BITSLOTH_ENABLE_CCE = os.environ.get("BITSLOTH_ENABLE_CCE", "1") == "1"
 UNSLOTH_COMPILE_DISABLE = os.environ.get("UNSLOTH_COMPILE_DISABLE", "0") in ("1", "partial",)
-UNSLOTH_COMPILE_LOCATION = os.environ.get("UNSLOTH_COMPILE_LOCATION", "unsloth_compiled_cache")
-if UNSLOTH_COMPILE_LOCATION not in sys.path:
-    sys.path.insert(0, UNSLOTH_COMPILE_LOCATION)
+BITSLOTH_COMPILE_LOCATION = os.environ.get("BITSLOTH_COMPILE_LOCATION", "unsloth_compiled_cache")
+if BITSLOTH_COMPILE_LOCATION not in sys.path:
+    sys.path.insert(0, BITSLOTH_COMPILE_LOCATION)
 
 import logging
 logger_compiler = logging.getLogger(__name__)
-if UNSLOTH_ENABLE_LOGGING:
+if BITSLOTH_ENABLE_LOGGING:
     logger_compiler.setLevel(logging.DEBUG)
 
 global INFERENCE_RUNS
@@ -197,13 +197,13 @@ except:
     torch_compiler_set_stance = None
 pass
 
-from unsloth_zoo import DEVICE_TYPE_TORCH, DEVICE_COUNT
+from bitsloth_zoo import DEVICE_TYPE_TORCH, DEVICE_COUNT
 """
 )
 
 _disabled_sdpa_code = f"""{_license_header}
 
-from unsloth_zoo.loss_utils import (
+from bitsloth_zoo.loss_utils import (
     fused_linear_cross_entropy,
     unsloth_fused_ce_loss,
 )
@@ -326,25 +326,25 @@ pass
 
 
 def _get_compile_folder(use_tempfile=False):
-    global UNSLOTH_COMPILE_LOCATION
+    global BITSLOTH_COMPILE_LOCATION
     global UNSLOTH_COMPILE_USE_TEMP
     if UNSLOTH_COMPILE_USE_TEMP or use_tempfile:
         UNSLOTH_COMPILE_USE_TEMP = True
-        leaf = os.path.basename(UNSLOTH_COMPILE_LOCATION)
+        leaf = os.path.basename(BITSLOTH_COMPILE_LOCATION)
         location = os.path.join(tempfile.gettempdir(), leaf)
         logger.info(
             f"Unsloth: We'll be using `{location}` for temporary Unsloth patches."
         )
         os.makedirs(location, exist_ok=True)
     else:
-        location = UNSLOTH_COMPILE_LOCATION
+        location = BITSLOTH_COMPILE_LOCATION
         try:
             # Try creating the directory
             os.makedirs(location, exist_ok=True)
             return location, UNSLOTH_COMPILE_USE_TEMP
         except Exception as e:
             logger.error(
-                f"Unsloth: Failed to create directory `{UNSLOTH_COMPILE_LOCATION}` because {str(e)}"
+                f"Unsloth: Failed to create directory `{BITSLOTH_COMPILE_LOCATION}` because {str(e)}"
             )
 
             # Instead use a temporary location!
@@ -533,7 +533,7 @@ def fix_attention_dtype_consistency(source):
     for match in reversed(matches):
         indent = match.group(1)
         end_pos = match.end()
-        next_chunk = source[end_pos:end_pos + 200]
+        next_chunk = source[end_pos : end_pos + 200]
         if "value_states = value_states.to(query_states.dtype)" in next_chunk:
             continue
         insert_code = (
@@ -611,6 +611,7 @@ _SKIP_TOKENS = {
     tokenize.COMMENT,
 }
 
+
 def _chunk_param_name(chunk):
     filtered = [(idx, tok) for idx, tok in chunk if tok.type not in _SKIP_TOKENS]
     if not filtered:
@@ -630,6 +631,7 @@ def _chunk_param_name(chunk):
     if first.type == tokenize.NAME:
         return first.string, "arg", first_idx
     return None, None, None
+
 
 def _process_param_tokens(param_tokens):
     chunks = []
@@ -680,8 +682,12 @@ def _process_param_tokens(param_tokens):
             param_names.add(name)
         param_info.append((chunk, name, kind, name_idx))
 
-    has_kwargs_kwarg = any(kind == "kwarg" and name == "kwargs" for _, name, kind, _ in param_info)
-    has_other_kwargs = any(kind != "kwarg" and name == "kwargs" for _, name, kind, _ in param_info)
+    has_kwargs_kwarg = any(
+        kind == "kwarg" and name == "kwargs" for _, name, kind, _ in param_info
+    )
+    has_other_kwargs = any(
+        kind != "kwarg" and name == "kwargs" for _, name, kind, _ in param_info
+    )
     if not (has_kwargs_kwarg and has_other_kwargs):
         return param_tokens, None
 
@@ -695,6 +701,7 @@ def _process_param_tokens(param_tokens):
             new_tokens[name_idx] = new_tokens[name_idx]._replace(string=replacement)
 
     return new_tokens, replacement
+
 
 def _rewrite_kwargs_param(source: str, func_name: str):
     try:
@@ -711,7 +718,11 @@ def _rewrite_kwargs_param(source: str, func_name: str):
             j = i + 1
             while j < len(tokens) and tokens[j].type in _SKIP_TOKENS:
                 j += 1
-            if j < len(tokens) and tokens[j].type == tokenize.NAME and tokens[j].string == func_name:
+            if (
+                j < len(tokens)
+                and tokens[j].type == tokenize.NAME
+                and tokens[j].string == func_name
+            ):
                 out_tokens.extend(tokens[i : j + 1])
                 i = j + 1
                 while i < len(tokens) and tokens[i].type in _SKIP_TOKENS:
@@ -753,6 +764,7 @@ def _rewrite_kwargs_param(source: str, func_name: str):
         return source, None
     return new_source, renamed_to
 
+
 def _insert_kwargs_alias(source: str, func_name: str, replacement: str):
     alias_line = f"kwargs = {replacement}"
     lines = source.splitlines(True)
@@ -765,7 +777,10 @@ def _insert_kwargs_alias(source: str, func_name: str, replacement: str):
         return source
     target = None
     for node in tree.body:
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == func_name:
+        if (
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == func_name
+        ):
             target = node
             break
     if target is None or not target.body:
@@ -785,11 +800,12 @@ def _insert_kwargs_alias(source: str, func_name: str, replacement: str):
 
     line_index = max(first_stmt.lineno - 1, 0)
     indent_line = lines[line_index] if line_index < len(lines) else "    "
-    indent = indent_line[:len(indent_line) - len(indent_line.lstrip())]
+    indent = indent_line[: len(indent_line) - len(indent_line.lstrip())]
     alias_text = indent + alias_line + "\n"
     insert_at = min(max(insert_at, 0), len(lines))
     lines.insert(insert_at, alias_text)
     return "".join(lines)
+
 
 def create_new_function(
     name,
@@ -803,7 +819,7 @@ def create_new_function(
 ):
     # All Unsloth Zoo code licensed under LGPLv3
     old_new_source = new_source
-    do_logging = os.environ.get("UNSLOTH_ENABLE_LOGGING", "0") == "1"
+    do_logging = os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1"
 
     # Fix all softmax low precisions to float32
     new_source = higher_precision_softmax(new_source)
@@ -849,9 +865,9 @@ def create_new_function(
     imports += "import torch.nn as nn\n"
     imports += "from torch.nn import functional as F\n"
     if "torch_compile" in new_source:
-        imports += "from unsloth_zoo.temporary_patches.common import torch_compile\n"
+        imports += "from bitsloth_zoo.temporary_patches.common import torch_compile\n"
     if "KWARGS_TYPE" in new_source:
-        imports += "from unsloth_zoo.temporary_patches.utils import KWARGS_TYPE\n"
+        imports += "from bitsloth_zoo.temporary_patches.utils import KWARGS_TYPE\n"
     if (
         "forward_moe_backend" in new_source
         or "select_moe_backend" in new_source
@@ -894,9 +910,9 @@ def create_new_function(
 
     # Check versioning
     try:
-        unsloth_zoo_version = importlib_version("unsloth_zoo")
+        bitsloth_zoo_version = importlib_version("bitsloth_zoo")
     except:
-        unsloth_zoo_version = "0"
+        bitsloth_zoo_version = "0"
     try:
         unsloth_version = importlib_version("unsloth")
     except:
@@ -911,7 +927,7 @@ def create_new_function(
         trl_version = "0"
 
     versioning = (
-        '"""\n' + f"{unsloth_zoo_version}\n"
+        '"""\n' + f"{bitsloth_zoo_version}\n"
         f"{unsloth_version}\n"
         f"{transformers_version}\n"
         f"{trl_version}\n__UNSLOTH_VERSIONING__\n" + '"""\n'
@@ -947,9 +963,13 @@ def create_new_function(
     if os.environ.get("UNSLOTH_COMPILE_OVERWRITE", "1") == "0":
         # Even with OVERWRITE disabled, force recompile on transformers version mismatch
         if file_source is not None and "__UNSLOTH_VERSIONING__" in file_source:
-            cached_versions = file_source[:file_source.find("__UNSLOTH_VERSIONING__")]
-            cached_lines = [l.strip() for l in cached_versions.strip().strip('"').split("\n") if l.strip()]
-            # Format: [unsloth_zoo_version, unsloth_version, transformers_version, trl_version]
+            cached_versions = file_source[: file_source.find("__UNSLOTH_VERSIONING__")]
+            cached_lines = [
+                l.strip()
+                for l in cached_versions.strip().strip('"').split("\n")
+                if l.strip()
+            ]
+            # Format: [bitsloth_zoo_version, unsloth_version, transformers_version, trl_version]
             cached_tf_version = cached_lines[2] if len(cached_lines) > 2 else "0"
             if cached_tf_version != transformers_version:
                 logger.warning_once(
@@ -990,7 +1010,7 @@ def create_new_function(
         except Exception as e:
             # consider adding logging to main_process only
             # counterpoint: we may want to see errors on all processes
-            if os.environ.get("UNSLOTH_ENABLE_LOGGING", "0") == "1":
+            if os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1":
                 logger.error(
                     f"Unsloth: Failed to write file {function_location} because {str(e)}"
                 )
@@ -1035,7 +1055,7 @@ def create_new_function(
                 new_module = importlib.import_module(name)
                 return new_module, old_path
         except Exception as e:
-            if os.environ.get("UNSLOTH_ENABLE_LOGGING", "0") == "1":
+            if os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1":
                 logger.error(
                     f"Unsloth: Failed to import module {name} because {str(e)}"
                 )
@@ -1090,7 +1110,7 @@ def create_new_function(
 
     if new_module is None:
         raise ImportError(
-            f"Unsloth: Cannot import {name} from {UNSLOTH_COMPILE_LOCATION}"
+            f"Unsloth: Cannot import {name} from {BITSLOTH_COMPILE_LOCATION}"
         )
 
     return new_module
@@ -1150,7 +1170,7 @@ def create_standalone_class(
             class_def = full_class[class_start:]
 
             # Split preamble into lines
-            lines = preamble.split('\n')
+            lines = preamble.split("\n")
             new_lines = []
 
             # Capture decorator head, including dotted paths: @pkg.decorator(...)
@@ -1182,8 +1202,10 @@ def create_standalone_class(
                         new_lines.append(line)
                         continue
 
-                    decorator_full = m.group(1)              # e.g. "foo.auto_docstring"
-                    decorator_base = decorator_full.split(".")[-1]  # e.g. "auto_docstring"
+                    decorator_full = m.group(1)  # e.g. "foo.auto_docstring"
+                    decorator_base = decorator_full.split(".")[
+                        -1
+                    ]  # e.g. "auto_docstring"
 
                     if decorator_base in STRIP_DECORATORS:
                         logger.info(
@@ -1210,14 +1232,20 @@ def create_standalone_class(
     # Check if forward was replaced by a temporary patch (renamed function)
     # In this case, keep the patched source as-is and replace the class forward body.
     patched_forward_info = None
-    if 'gptossexperts' != module.lower():
+    if "gptossexperts" != module.lower():
         func_match = re.search(r"def\s+(\w+)\s*\(", forward_source)
         if func_match and func_match.group(1) != "forward":
             # Find original forward in class to replace it
-            orig_fwd = re.search(r"(\n\s+def\s+forward\s*\([^)]*\)[^:]*:.*?)(?=\n\s+def\s|\n\s+@|\Z)", full_class, re.DOTALL)
+            orig_fwd = re.search(
+                r"(\n\s+def\s+forward\s*\([^)]*\)[^:]*:.*?)(?=\n\s+def\s|\n\s+@|\Z)",
+                full_class,
+                re.DOTALL,
+            )
             if orig_fwd:
                 patched_forward_info = (func_match.group(1), orig_fwd.group(1))
-                disable = None  # Keep patched source as-is for renamed forward replacements
+                disable = (
+                    None  # Keep patched source as-is for renamed forward replacements
+                )
 
     # Replace function name with module-specific name
     if patched_forward_info:
@@ -1304,9 +1332,12 @@ def create_standalone_class(
     source = f"{compile}\n{source}\n"
     left = re.match(r"[\s\n]{4,}", leftover).span()[1]
     # Use patched function name if forward was replaced by temporary patch
-    forward_func_name = patched_forward_info[0] if patched_forward_info else f"{module}_forward"
-    new_forward = definition + leftover[:left] + \
-        f"return {forward_func_name}({parameters})\n"
+    forward_func_name = (
+        patched_forward_info[0] if patched_forward_info else f"{module}_forward"
+    )
+    new_forward = (
+        definition + leftover[:left] + f"return {forward_func_name}({parameters})\n"
+    )
     source_to_replace = patched_forward_info[1] if patched_forward_info else old_source
     full_class = full_class.replace(source_to_replace, new_forward)
 
@@ -1321,7 +1352,7 @@ def create_standalone_class(
                 old_method_source = inspect.getsource(getattr(f, method_name))
                 full_class = full_class.replace(old_method_source, method_source)
             except Exception as e:
-                if os.environ.get("UNSLOTH_ENABLE_LOGGING", "0") == "1":
+                if os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1":
                     print(
                         f"Unsloth: Failed to replace method {method_name} in {module} with error = {str(e)}"
                     )
@@ -1443,7 +1474,7 @@ __DYNAMO__RECOMPILING__ = """
     if old_stance is not None and INFERENCE_RUNS == 1:
         # Skip guards and return to eager -> we still need guards!
         torch_compiler_set_stance(stance = "eager_on_recompile", skip_guard_eval_unsafe = False)
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             logger_compiler.info(
                 f"Unsloth: Removing compiler guards after 1 inference run. "\\
                 f"DYNAMO_STANCE.stance = {torch_dynamo_eval_frame._stance.stance} "\\
@@ -1454,7 +1485,7 @@ __DYNAMO__RECOMPILING__ = """
     elif old_stance == "default" and INFERENCE_RUNS > 1:
         # Reset compiler stance
         torch_compiler_set_stance(stance = "default", skip_guard_eval_unsafe = False)
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             logger_compiler.info(
                 f"Unsloth: Reseting guards. "\\
                 f"DYNAMO_STANCE.stance = {torch_dynamo_eval_frame._stance.stance} "\\
@@ -1517,7 +1548,7 @@ if RETURN_HIDDEN_STATES:
 elif labels is None:
     __DYNAMO__RECOMPILING__
     logits = self.lm_head(hidden_states\\1)
-elif ((\\2) == () and (\\3) == ()) and (UNSLOTH_ENABLE_CCE) and NOT_RETURN_LOGITS and self.loss_function.__name__.endswith("ForCausalLMLoss") and labels is not None and not requires_grad_:
+elif ((\\2) == () and (\\3) == ()) and (BITSLOTH_ENABLE_CCE) and NOT_RETURN_LOGITS and self.loss_function.__name__.endswith("ForCausalLMLoss") and labels is not None and not requires_grad_:
     loss = fused_linear_cross_entropy(
         hidden_states      = hidden_states\\1,
         lm_weight          = self.lm_head.weight,
@@ -1596,7 +1627,7 @@ if RETURN_HIDDEN_STATES:
 elif labels is None:
     __DYNAMO__RECOMPILING__
     logits = self.lm_head(hidden_states\\1)
-elif ((\\2) == () and (\\3) == ()) and (UNSLOTH_ENABLE_CCE) and NOT_RETURN_LOGITS and self.loss_function.__name__.endswith("ForCausalLMLoss") and labels is not None and not requires_grad_:
+elif ((\\2) == () and (\\3) == ()) and (BITSLOTH_ENABLE_CCE) and NOT_RETURN_LOGITS and self.loss_function.__name__.endswith("ForCausalLMLoss") and labels is not None and not requires_grad_:
     loss = fused_linear_cross_entropy(
         hidden_states      = hidden_states\\1,
         lm_weight          = self.lm_head.weight,
@@ -1737,7 +1768,7 @@ ce_finders = [
 
 def apply_fused_lm_head(forward, module=None):
     # All Unsloth Zoo code licensed under LGPLv3
-    UNSLOTH_ENABLE_LOGGING = os.environ.get("UNSLOTH_ENABLE_LOGGING", "0") == "1"
+    BITSLOTH_ENABLE_LOGGING = os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1"
     for jj, (cross_entropy_find, cross_entropy_replacement) in enumerate(ce_finders):
         cross_entropy_find = (
             cross_entropy_find.strip()
@@ -1863,13 +1894,13 @@ def apply_fused_lm_head(forward, module=None):
 
         # Find matches
         if r"loss\_function" in cross_entropy_find and "loss_function" not in forward:
-            if UNSLOTH_ENABLE_LOGGING:
+            if BITSLOTH_ENABLE_LOGGING:
                 print(
                     f"(1) Unsloth skipping patching fast linear cross entropy for {module}"
                 )
             continue
         elif r"loss\_function" not in cross_entropy_find and "loss_function" in forward:
-            if UNSLOTH_ENABLE_LOGGING:
+            if BITSLOTH_ENABLE_LOGGING:
                 print(
                     f"(2) Unsloth skipping patching fast linear cross entropy for {module}"
                 )
@@ -1878,7 +1909,7 @@ def apply_fused_lm_head(forward, module=None):
             "CrossEntropyLoss" not in cross_entropy_find
             and "CrossEntropyLoss" in forward
         ):
-            if UNSLOTH_ENABLE_LOGGING:
+            if BITSLOTH_ENABLE_LOGGING:
                 print(
                     f"(3) Unsloth skipping patching fast linear cross entropy for {module}"
                 )
@@ -1887,7 +1918,7 @@ def apply_fused_lm_head(forward, module=None):
             "CrossEntropyLoss" in cross_entropy_find
             and "CrossEntropyLoss" not in forward
         ):
-            if UNSLOTH_ENABLE_LOGGING:
+            if BITSLOTH_ENABLE_LOGGING:
                 print(
                     f"(4) Unsloth skipping patching fast linear cross entropy for {module}"
                 )
@@ -1900,14 +1931,14 @@ def apply_fused_lm_head(forward, module=None):
                 timeout=1,
             )
         except Exception as e:
-            if UNSLOTH_ENABLE_LOGGING:
+            if BITSLOTH_ENABLE_LOGGING:
                 print(
                     f"Unsloth failed patching fast linear cross entropy with error: {str(e)}"
                 )
             continue
         if len(finder) == 0:
             continue
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             print(
                 f"[{jj + 1}/3 pattern] Successfully patched fast linear cross entropy for {module}"
             )
@@ -2220,7 +2251,8 @@ def patch_gradient_checkpointing(module, source):
 
     layer, spaces, args = find[0]
     match = re.search(finder, forward)
-    if match is None: return None
+    if match is None:
+        return None
     span = match.span(0)
     replacer = replace_gradient_checkpointing.strip()
 
@@ -2566,7 +2598,7 @@ def patch_lora_forwards(torch_compile_options):
             # For 4-bit layers, weight.dtype is uint8 (packed quantized bytes),
             # so we must skip the cast to avoid corrupting input values.
             _base_layer_call = "result = self.base_layer(x, *args, **kwargs)"
-            _m = re.search(r'^( *)' + re.escape(_base_layer_call), source, re.MULTILINE)
+            _m = re.search(r"^( *)" + re.escape(_base_layer_call), source, re.MULTILINE)
             if _m:
                 _ind = _m.group(1)
                 source = source.replace(
@@ -2606,7 +2638,7 @@ def patch_lora_forwards(torch_compile_options):
     if success <= 5:
         print("Unsloth: Not an error, but could not optimize some PEFT modules.")
 
-    if os.environ.get("UNSLOTH_ENABLE_LOGGING", "0") == "1":
+    if os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1":
         print("Unsloth: Not an error, but could not optimize some PEFT modules.")
         print(could_not_replace_modules)
     return
@@ -2781,7 +2813,7 @@ def rms_norm2d(
 pass
 
 
-def compile_timm_models(UNSLOTH_ENABLE_LOGGING, torch_compile_options):
+def compile_timm_models(BITSLOTH_ENABLE_LOGGING, torch_compile_options):
     try:
         import timm
     except:
@@ -2791,10 +2823,10 @@ def compile_timm_models(UNSLOTH_ENABLE_LOGGING, torch_compile_options):
 
         timm.layers.fast_norm.is_fast_norm = lambda *args, **kwargs: False
         timm.layers.fast_norm.rms_norm2d = rms_norm2d
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             print("Unsloth: Compiled timm.layers.fast_norm")
     except:
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             print("Unsloth: Failed compiling timm.layers.fast_norm")
     pass
     # Try compiling norms and activation combinations
@@ -2807,7 +2839,7 @@ def compile_timm_models(UNSLOTH_ENABLE_LOGGING, torch_compile_options):
             try:
                 exec(f"from timm.layers.norm_act import {norm}")
             except:
-                if UNSLOTH_ENABLE_LOGGING:
+                if BITSLOTH_ENABLE_LOGGING:
                     print(
                         f"Unsloth: Failed compiling from timm.layers.norm_act import {norm}"
                     )
@@ -2820,11 +2852,11 @@ def compile_timm_models(UNSLOTH_ENABLE_LOGGING, torch_compile_options):
                 forward, fullgraph=True, dynamic=None, options=torch_compile_options
             )
             exec(f"timm.layers.norm_act.{norm}.forward = forward")
-            if UNSLOTH_ENABLE_LOGGING:
+            if BITSLOTH_ENABLE_LOGGING:
                 print(f"Unsloth: Compiled timm.layers.norm_act.{norm}")
         pass
     except:
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             print(f"Unsloth: Failed compiling timm.layers.norm_act")
     pass
     # Compile EfficientNet blocks
@@ -2838,7 +2870,7 @@ def compile_timm_models(UNSLOTH_ENABLE_LOGGING, torch_compile_options):
             try:
                 exec(f"from timm.models._efficientnet_blocks import {block}")
             except:
-                if UNSLOTH_ENABLE_LOGGING:
+                if BITSLOTH_ENABLE_LOGGING:
                     print(
                         f"Unsloth: Failed compiling from timm.models._efficientnet_blocks import {block}"
                     )
@@ -2851,10 +2883,10 @@ def compile_timm_models(UNSLOTH_ENABLE_LOGGING, torch_compile_options):
                 forward, fullgraph=True, dynamic=None, options=torch_compile_options
             )
             exec(f"timm.models._efficientnet_blocks.{block}.forward = forward")
-            if UNSLOTH_ENABLE_LOGGING:
+            if BITSLOTH_ENABLE_LOGGING:
                 print(f"Unsloth: Compiled timm.models._efficientnet_blocks.{block}")
     except:
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             print(f"Unsloth: Failed compiling timm.models._efficientnet_blocks")
     pass
 
@@ -2862,7 +2894,7 @@ def compile_timm_models(UNSLOTH_ENABLE_LOGGING, torch_compile_options):
 pass
 
 
-def compile_causal_conv1d(UNSLOTH_ENABLE_LOGGING=False):
+def compile_causal_conv1d(BITSLOTH_ENABLE_LOGGING=False):
     # For Liquid, Falcon and other Mamba type models
     # We disable compiling on them!
     try:
@@ -2874,12 +2906,12 @@ def compile_causal_conv1d(UNSLOTH_ENABLE_LOGGING=False):
         causal_conv1d.causal_conv1d_update = torch.compiler.disable(
             causal_conv1d.causal_conv1d_update, recursive=True
         )
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             print(f"Unsloth: Disabled compiling causal_conv1d")
         return True
     except Exception as e:
         print(e, str(e))
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             print(f"Unsloth: Failed compiling causal_conv1d")
         return False
 
@@ -2887,7 +2919,7 @@ def compile_causal_conv1d(UNSLOTH_ENABLE_LOGGING=False):
 pass
 
 
-def compile_mamba_ssm(UNSLOTH_ENABLE_LOGGING=False):
+def compile_mamba_ssm(BITSLOTH_ENABLE_LOGGING=False):
     # For Liquid, Falcon and other Mamba type models
     # We disable compiling on them!
     try:
@@ -2911,11 +2943,11 @@ def compile_mamba_ssm(UNSLOTH_ENABLE_LOGGING=False):
                 recursive=True,
             )
         )
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             print(f"Unsloth: Disabled compiling mamba_ssm")
         return True
     except:
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             print(f"Unsloth: Failed compiling mamba_ssm")
         return False
 
@@ -2923,13 +2955,13 @@ def compile_mamba_ssm(UNSLOTH_ENABLE_LOGGING=False):
 pass
 
 
-def compile_fla_no_autotune(UNSLOTH_ENABLE_LOGGING=False):
-    '''
+def compile_fla_no_autotune(BITSLOTH_ENABLE_LOGGING=False):
+    """
     FLA seems to be autocompiling at every step causing severe performance downgrades.
     I noticed this on Qwen-3.5-MoE and potentially Qwen3-Next. 4-5x from initial tests.
     This function is to disable repetitive autotuning and use the first tuned kernel.
     In case one wants to override this, set UNSLOTH_DISABLE_FLA_NO_AUTOTUNE=1
-    '''
+    """
     if os.environ.get("UNSLOTH_DISABLE_FLA_NO_AUTOTUNE", "0") == "1":
         return False
     try:
@@ -2943,8 +2975,10 @@ def compile_fla_no_autotune(UNSLOTH_ENABLE_LOGGING=False):
         This lets the first autotune run find the best config normally,
         then reuses it for any unseen key (e.g. different NB from
         variable sequence lengths), preventing repeated benchmarking."""
+
         def __contains__(self, key):
             return len(self) > 0 or super().__contains__(key)
+
         def __getitem__(self, key):
             if not super().__contains__(key) and len(self) > 0:
                 return next(iter(self.values()))
@@ -2963,18 +2997,34 @@ def compile_fla_no_autotune(UNSLOTH_ENABLE_LOGGING=False):
     modules_and_kernels = []
     try:
         import fla.modules.fused_norm_gate as fused_norm_gate
-        modules_and_kernels.append((fused_norm_gate, [
-            "layer_norm_gated_fwd_kernel", "layer_norm_gated_fwd_kernel1",
-            "layer_norm_gated_bwd_kernel", "layer_norm_gated_bwd_kernel1",
-        ]))
+
+        modules_and_kernels.append(
+            (
+                fused_norm_gate,
+                [
+                    "layer_norm_gated_fwd_kernel",
+                    "layer_norm_gated_fwd_kernel1",
+                    "layer_norm_gated_bwd_kernel",
+                    "layer_norm_gated_bwd_kernel1",
+                ],
+            )
+        )
     except ImportError:
         pass
     try:
         import fla.modules.l2norm as l2norm_module
-        modules_and_kernels.append((l2norm_module, [
-            "l2norm_fwd_kernel", "l2norm_fwd_kernel1",
-            "l2norm_bwd_kernel", "l2norm_bwd_kernel1",
-        ]))
+
+        modules_and_kernels.append(
+            (
+                l2norm_module,
+                [
+                    "l2norm_fwd_kernel",
+                    "l2norm_fwd_kernel1",
+                    "l2norm_bwd_kernel",
+                    "l2norm_bwd_kernel1",
+                ],
+            )
+        )
     except ImportError:
         pass
 
@@ -2991,7 +3041,7 @@ def compile_fla_no_autotune(UNSLOTH_ENABLE_LOGGING=False):
                 autotuner.cache = _ReuseBestCache(autotuner.cache)
                 patched.append(name)
 
-    if UNSLOTH_ENABLE_LOGGING and len(patched) > 0:
+    if BITSLOTH_ENABLE_LOGGING and len(patched) > 0:
         logger.info("Unsloth: Patched FLA autotune caches for " + ", ".join(patched))
     return len(patched) > 0
 
@@ -3107,20 +3157,20 @@ def unsloth_compile_transformers(
     pass
 
     # torch_compile_options
-    UNSLOTH_COMPILE_DEBUG = os.environ.get("UNSLOTH_COMPILE_DEBUG", "0") == "1"
+    BITSLOTH_COMPILE_DEBUG = os.environ.get("BITSLOTH_COMPILE_DEBUG", "0") == "1"
     UNSLOTH_COMPILE_MAXIMUM = os.environ.get("UNSLOTH_COMPILE_MAXIMUM", "0") == "1"
     UNSLOTH_COMPILE_IGNORE_ERRORS = (
         os.environ.get("UNSLOTH_COMPILE_IGNORE_ERRORS", "0") == "1"
     )
-    UNSLOTH_ENABLE_LOGGING = os.environ.get("UNSLOTH_ENABLE_LOGGING", "0") == "1"
+    BITSLOTH_ENABLE_LOGGING = os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1"
     torch_compile_options = get_torch_compile_options(
         epilogue_fusion=epilogue_fusion,
         max_autotune=max_autotune,
         shape_padding=shape_padding,
-        debug=UNSLOTH_COMPILE_DEBUG,
+        debug=BITSLOTH_COMPILE_DEBUG,
         cudagraphs=cudagraphs,
         coordinate_descent_tuning=UNSLOTH_COMPILE_MAXIMUM,
-        logging=UNSLOTH_ENABLE_LOGGING,
+        logging=BITSLOTH_ENABLE_LOGGING,
         combo_kernels=False,  # Causes incompatible gradient sizes on 2.6
         group_fusion=True,
         memory_planning=True,
@@ -3129,12 +3179,12 @@ def unsloth_compile_transformers(
     )
 
     # Compile timm models
-    compile_timm_models(UNSLOTH_ENABLE_LOGGING, torch_compile_options)
+    compile_timm_models(BITSLOTH_ENABLE_LOGGING, torch_compile_options)
 
     # Disable compiling mamba type models
-    has_causal_conv1d = compile_causal_conv1d(UNSLOTH_ENABLE_LOGGING)
-    has_mamba_ssm = compile_mamba_ssm(UNSLOTH_ENABLE_LOGGING)
-    has_fla_no_autotune = compile_fla_no_autotune(UNSLOTH_ENABLE_LOGGING)
+    has_causal_conv1d = compile_causal_conv1d(BITSLOTH_ENABLE_LOGGING)
+    has_mamba_ssm = compile_mamba_ssm(BITSLOTH_ENABLE_LOGGING)
+    has_fla_no_autotune = compile_fla_no_autotune(BITSLOTH_ENABLE_LOGGING)
 
     # Return logits
     UNSLOTH_RETURN_LOGITS = "0" if not return_logits else "1"
@@ -3462,11 +3512,7 @@ def unsloth_compile_transformers(
         # Tier 2: MoE expert dispatch via torch.where + index_add
         #   1-arg torch.where returns data-dependent indices; combined with
         #   index_add this is the standard MoE routing loop pattern
-        if (
-            ".nonzero()" in source
-            or ".tolist()" in source
-            or ".item()" in source
-        ):
+        if ".nonzero()" in source or ".tolist()" in source or ".item()" in source:
             print(
                 f"Unsloth: Will not compile {module} since data-dependent operations are done."
             )
@@ -3928,7 +3974,9 @@ def unsloth_compile_transformers(
             try:
                 source = inspect.getsource(function)
             except Exception as e:
-                print(f"Unsloth: Cannot run inspect.getsource on {module} with error = {e}")
+                print(
+                    f"Unsloth: Cannot run inspect.getsource on {module} with error = {e}"
+                )
                 continue
 
             where = source.find(str(parameters))
@@ -3961,10 +4009,7 @@ def unsloth_compile_transformers(
             print(f"Unsloth: Fixed up function {module}.")
 
             if module in disable_compile_functions:
-                parameters = (
-                    "@torch.compiler.disable(recursive = False)\n"
-                    + parameters
-                )
+                parameters = "@torch.compiler.disable(recursive = False)\n" + parameters
             elif not disable:
                 parameters = f"@torch.compile(fullgraph = {UNSLOTH_FULLGRAPH}, dynamic = True, options = torch_compile_options)\n{parameters}"
             all_standalone_classes[module] = parameters
@@ -4067,7 +4112,7 @@ def unsloth_compile_transformers(
     except Exception as exception:
         if not disable:
             raise RuntimeError(exception)
-        if UNSLOTH_ENABLE_LOGGING:
+        if BITSLOTH_ENABLE_LOGGING:
             print(str(exception))
             print(str(dir(combined_module)))
         combined_module = None
@@ -4077,10 +4122,16 @@ def unsloth_compile_transformers(
 
         patch_torch_functions()
 
-        _conv_modules = frozenset([
-            "Conv1d", "Conv2d", "Conv3d",
-            "ConvTranspose1d", "ConvTranspose2d", "ConvTranspose3d",
-        ])
+        _conv_modules = frozenset(
+            [
+                "Conv1d",
+                "Conv2d",
+                "Conv3d",
+                "ConvTranspose1d",
+                "ConvTranspose2d",
+                "ConvTranspose3d",
+            ]
+        )
         for module in _patch_functions:
             try:
                 source = eval(f"{model_location}.torch")
@@ -4107,7 +4158,7 @@ def unsloth_compile_transformers(
                 def_line = lines[0]
                 body_lines = lines[1:]
                 first_body = next((l for l in body_lines if l.strip()), "")
-                body_indent = first_body[:len(first_body) - len(first_body.lstrip())]
+                body_indent = first_body[: len(first_body) - len(first_body.lstrip())]
                 prologue = [
                     body_indent + "original_dtype = input.dtype",
                     body_indent + "input = input.to(self.weight.dtype)",
@@ -4117,6 +4168,7 @@ def unsloth_compile_transformers(
             else:
                 # Norm modules: detect the actual parameter name (input or x)
                 import re as _re
+
                 m = _re.search(r"def forward\(self,\s*(\w+)", source)
                 param_name = m.group(1) if m else "input"
                 append_str = f".to({param_name}.dtype)\n"

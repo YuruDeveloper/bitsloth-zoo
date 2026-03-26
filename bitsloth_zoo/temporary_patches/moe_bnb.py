@@ -35,13 +35,14 @@ import os
 import warnings
 from ..log import logger
 
-UNSLOTH_ENABLE_LOGGING = os.environ.get("UNSLOTH_ENABLE_LOGGING", "0") == "1"
+BITSLOTH_ENABLE_LOGGING = os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1"
 
 # Check bitsandbytes availability
 try:
     import bitsandbytes as bnb
     from bitsandbytes.nn import Params4bit
     from bitsandbytes.functional import dequantize_4bit
+
     HAS_BNB = True
 except ImportError:
     HAS_BNB = False
@@ -73,6 +74,7 @@ class MoeExperts4bit(nn.Module):
     For maximum throughput, consider using grouped_mm backend with native bf16 weights.
     Set UNSLOTH_MOE_BACKEND=grouped_mm environment variable.
     """
+
     _warned_loop_based = False
 
     def __init__(
@@ -140,7 +142,16 @@ class MoeExperts4bit(nn.Module):
                 )
                 warnings.filterwarnings("ignore", message=".*slow inference.*")
 
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs):
+    def _load_from_state_dict(
+        self,
+        state_dict,
+        prefix,
+        local_metadata,
+        strict,
+        missing_keys,
+        unexpected_keys,
+        error_msgs,
+    ):
         """
         Override to handle loading 3D stacked weights and convert to Params4bit.
 
@@ -157,7 +168,7 @@ class MoeExperts4bit(nn.Module):
             down_proj = state_dict.pop(down_key)
 
             # If on CUDA, quantize immediately
-            if gate_up_proj.device.type == 'cuda':
+            if gate_up_proj.device.type == "cuda":
                 self._quantize_and_store(gate_up_proj, down_proj)
             else:
                 # Store for later quantization on .to(cuda)
@@ -165,7 +176,15 @@ class MoeExperts4bit(nn.Module):
                 self.register_buffer("_down_proj_pending", down_proj)
         else:
             # Try loading per-expert quantized format
-            super()._load_from_state_dict(state_dict, prefix, local_metadata, strict, missing_keys, unexpected_keys, error_msgs)
+            super()._load_from_state_dict(
+                state_dict,
+                prefix,
+                local_metadata,
+                strict,
+                missing_keys,
+                unexpected_keys,
+                error_msgs,
+            )
 
     def _quantize_and_store(self, gate_up_proj: torch.Tensor, down_proj: torch.Tensor):
         """Quantize stacked weights to per-expert Params4bit."""
@@ -210,7 +229,10 @@ class MoeExperts4bit(nn.Module):
             self._bnb_down_weights.append(down_4bit)
 
         # Clear pending buffers
-        if hasattr(self, "_gate_up_proj_pending") and self._gate_up_proj_pending is not None:
+        if (
+            hasattr(self, "_gate_up_proj_pending")
+            and self._gate_up_proj_pending is not None
+        ):
             del self._gate_up_proj_pending
         if hasattr(self, "_down_proj_pending") and self._down_proj_pending is not None:
             del self._down_proj_pending
@@ -223,10 +245,13 @@ class MoeExperts4bit(nn.Module):
         to CUDA, pending weights are quantized.
         """
         # Check if moving to CUDA and have pending weights
-        if hasattr(self, "_gate_up_proj_pending") and self._gate_up_proj_pending is not None:
+        if (
+            hasattr(self, "_gate_up_proj_pending")
+            and self._gate_up_proj_pending is not None
+        ):
             # Apply the function to get the target device
             test_tensor = fn(torch.zeros(1))
-            if test_tensor.device.type == 'cuda':
+            if test_tensor.device.type == "cuda":
                 # Quantize now
                 pending_gate_up = fn(self._gate_up_proj_pending)
                 pending_down = fn(self._down_proj_pending)
@@ -260,7 +285,7 @@ class MoeExperts4bit(nn.Module):
             self.compute_type_is_set = True
 
             # Warn about loop-based forward (only once)
-            if UNSLOTH_ENABLE_LOGGING and not MoeExperts4bit._warned_loop_based:
+            if BITSLOTH_ENABLE_LOGGING and not MoeExperts4bit._warned_loop_based:
                 MoeExperts4bit._warned_loop_based = True
                 logger.warning(
                     "Unsloth: Using BNB 4-bit MoE with loop-based forward. "
@@ -277,9 +302,13 @@ class MoeExperts4bit(nn.Module):
         # This is much faster than iterating over all 128 experts
         with torch.no_grad():
             expert_mask = F.one_hot(top_k_index, num_classes=self.num_experts)
-            expert_mask = expert_mask.permute(2, 1, 0)  # [num_experts, top_k, num_tokens]
+            expert_mask = expert_mask.permute(
+                2, 1, 0
+            )  # [num_experts, top_k, num_tokens]
             # Find which experts actually have tokens (sum across top_k and tokens dims)
-            expert_hit = torch.greater(expert_mask.sum(dim=(-1, -2)), 0).nonzero(as_tuple=False)
+            expert_hit = torch.greater(expert_mask.sum(dim=(-1, -2)), 0).nonzero(
+                as_tuple=False
+            )
 
         # Only loop over experts that have tokens routed to them
         for expert_idx_t in expert_hit:
@@ -300,15 +329,17 @@ class MoeExperts4bit(nn.Module):
             current_hidden_states = self.act_fn(gate) * up
 
             # Compute down projection using bnb.matmul_4bit
-            current_hidden_states = self._matmul_4bit(current_hidden_states, down_weight)
+            current_hidden_states = self._matmul_4bit(
+                current_hidden_states, down_weight
+            )
 
             # Apply routing weights
-            current_hidden_states = current_hidden_states * top_k_weights[token_idx, top_k_pos, None]
+            current_hidden_states = (
+                current_hidden_states * top_k_weights[token_idx, top_k_pos, None]
+            )
 
             # Scatter back
-            final_hidden_states.index_add_(
-                0, token_idx, current_hidden_states
-            )
+            final_hidden_states.index_add_(0, token_idx, current_hidden_states)
 
         return final_hidden_states.to(inp_dtype)
 
@@ -336,22 +367,31 @@ class MoeExperts4bit(nn.Module):
             )
 
             # Save quant state components
-            if hasattr(gate_up_4bit, 'quant_state') and gate_up_4bit.quant_state is not None:
+            if (
+                hasattr(gate_up_4bit, "quant_state")
+                and gate_up_4bit.quant_state is not None
+            ):
                 for k, v in gate_up_4bit.quant_state.as_dict(packed=True).items():
-                    destination[f"{gate_up_prefix}weight.{k}"] = v if keep_vars else v.detach()
+                    destination[f"{gate_up_prefix}weight.{k}"] = (
+                        v if keep_vars else v.detach()
+                    )
 
-            if hasattr(down_4bit, 'quant_state') and down_4bit.quant_state is not None:
+            if hasattr(down_4bit, "quant_state") and down_4bit.quant_state is not None:
                 for k, v in down_4bit.quant_state.as_dict(packed=True).items():
-                    destination[f"{down_prefix}weight.{k}"] = v if keep_vars else v.detach()
+                    destination[f"{down_prefix}weight.{k}"] = (
+                        v if keep_vars else v.detach()
+                    )
 
 
 class Qwen3MoeExperts4bit(MoeExperts4bit):
     """4-bit quantized version of Qwen3MoeExperts."""
+
     pass
 
 
 class Qwen3VLMoeExperts4bit(MoeExperts4bit):
     """4-bit quantized version of Qwen3VLMoeTextExperts."""
+
     pass
 
 
@@ -383,18 +423,24 @@ def replace_with_bnb_moe_experts(
     quant_storage = torch.uint8
 
     if quantization_config is not None:
-        compute_dtype = getattr(quantization_config, 'bnb_4bit_compute_dtype', torch.bfloat16)
-        compress_statistics = getattr(quantization_config, 'bnb_4bit_use_double_quant', True)
-        quant_type = getattr(quantization_config, 'bnb_4bit_quant_type', 'nf4')
-        quant_storage = getattr(quantization_config, 'bnb_4bit_quant_storage', torch.uint8)
+        compute_dtype = getattr(
+            quantization_config, "bnb_4bit_compute_dtype", torch.bfloat16
+        )
+        compress_statistics = getattr(
+            quantization_config, "bnb_4bit_use_double_quant", True
+        )
+        quant_type = getattr(quantization_config, "bnb_4bit_quant_type", "nf4")
+        quant_storage = getattr(
+            quantization_config, "bnb_4bit_quant_storage", torch.uint8
+        )
 
     # Find all MoE expert modules
     for module_name, module in list(model.named_modules()):
-        if hasattr(module, 'experts') and hasattr(module.experts, 'gate_up_proj'):
+        if hasattr(module, "experts") and hasattr(module.experts, "gate_up_proj"):
             experts = module.experts
 
             # Skip if already quantized
-            if getattr(experts, '_is_bnb_4bit', False):
+            if getattr(experts, "_is_bnb_4bit", False):
                 continue
 
             # Get dimensions from the original module
@@ -403,7 +449,7 @@ def replace_with_bnb_moe_experts(
 
             # Determine quantized class based on module type
             module_class_name = type(module).__name__
-            if 'Qwen3VL' in module_class_name or 'qwen3_vl' in type(module).__module__:
+            if "Qwen3VL" in module_class_name or "qwen3_vl" in type(module).__module__:
                 quantized_cls = Qwen3VLMoeExperts4bit
                 # Qwen3-VL has transposed weights in grouped_mm format (E, H, 2*I)
                 # gate_up_proj: (E, H, 2*I)
@@ -428,14 +474,14 @@ def replace_with_bnb_moe_experts(
                 )
 
             # Copy activation function if present
-            if hasattr(experts, 'act_fn'):
+            if hasattr(experts, "act_fn"):
                 new_experts.act_fn = experts.act_fn
 
             # Replace the module
             module.experts = new_experts
             has_been_replaced = True
 
-            if UNSLOTH_ENABLE_LOGGING:
+            if BITSLOTH_ENABLE_LOGGING:
                 logger.info(
                     f"Unsloth: Prepared {module_name}.experts for BNB 4-bit quantization "
                     f"({num_experts} experts, hidden={hidden_dim}, intermediate={intermediate_dim})"
@@ -446,7 +492,7 @@ def replace_with_bnb_moe_experts(
 
 def is_moe_quantized(module: nn.Module) -> bool:
     """Check if an MoE experts module is 4-bit quantized."""
-    return getattr(module, '_is_bnb_4bit', False)
+    return getattr(module, "_is_bnb_4bit", False)
 
 
 # Compatibility functions for post-loading quantization (kept for manual use)
@@ -462,14 +508,14 @@ def quantize_moe_experts_inplace(model: nn.Module, verbose: bool = True) -> int:
     count = 0
 
     for name, module in list(model.named_modules()):
-        if hasattr(module, 'experts') and hasattr(module.experts, 'gate_up_proj'):
+        if hasattr(module, "experts") and hasattr(module.experts, "gate_up_proj"):
             experts = module.experts
 
-            if getattr(experts, '_is_bnb_4bit', False):
+            if getattr(experts, "_is_bnb_4bit", False):
                 continue
 
             module_class_name = type(module).__name__
-            if 'Qwen3VL' in module_class_name or 'qwen3_vl' in type(module).__module__:
+            if "Qwen3VL" in module_class_name or "qwen3_vl" in type(module).__module__:
                 quantized_cls = Qwen3VLMoeExperts4bit
             else:
                 quantized_cls = Qwen3MoeExperts4bit
@@ -488,7 +534,7 @@ def quantize_moe_experts_inplace(model: nn.Module, verbose: bool = True) -> int:
             )
             new_experts._quantize_and_store(experts.gate_up_proj, experts.down_proj)
 
-            if hasattr(experts, 'act_fn'):
+            if hasattr(experts, "act_fn"):
                 new_experts.act_fn = experts.act_fn
 
             module.experts = new_experts
@@ -503,7 +549,9 @@ def quantize_moe_experts_inplace(model: nn.Module, verbose: bool = True) -> int:
     return count
 
 
-def post_quantize_moe_experts(model: nn.Module, load_in_4bit: bool = False, verbose: bool = True) -> nn.Module:
+def post_quantize_moe_experts(
+    model: nn.Module, load_in_4bit: bool = False, verbose: bool = True
+) -> nn.Module:
     """
     Post-loading hook to quantize MoE experts to 4-bit.
 
@@ -515,7 +563,7 @@ def post_quantize_moe_experts(model: nn.Module, load_in_4bit: bool = False, verb
 
     has_moe = False
     for name, module in model.named_modules():
-        if hasattr(module, 'experts') and hasattr(module.experts, 'gate_up_proj'):
+        if hasattr(module, "experts") and hasattr(module.experts, "gate_up_proj"):
             has_moe = True
             break
 
