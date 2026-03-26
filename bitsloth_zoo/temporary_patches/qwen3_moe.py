@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -202,7 +202,7 @@ def _patch_causal_lm_forward_for_hidden_states(
         **kwargs,
     ):
         RETURN_HIDDEN_STATES = (
-            os.environ.get("UNSLOTH_RETURN_HIDDEN_STATES", "0") == "1"
+            os.environ.get("bitsloth_RETURN_HIDDEN_STATES", "0") == "1"
         )
 
         if not RETURN_HIDDEN_STATES:
@@ -258,7 +258,7 @@ def _patch_causal_lm_forward_for_hidden_states(
     _patched_causal_lm_forward.__qualname__ = _original_causal_lm_forward.__qualname__
     causal_lm_cls.forward = _patched_causal_lm_forward
     if BITSLOTH_ENABLE_LOGGING:
-        logger.info(f"Unsloth: Patched {model_label}.forward for GRPO hidden states.")
+        logger.info(f"bitsloth: Patched {model_label}.forward for GRPO hidden states.")
 
 
 def patch_qwen3_moe():
@@ -360,7 +360,7 @@ def patch_qwen3_moe():
             return router_scores, selected_experts, router_logits
 
         def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
-            # This Unsloth Zoo code section is licensed under AGPL3
+            # This bitsloth Zoo code section is licensed under AGPL3
 
             is_3d = hidden_states.dim() == 3
             if is_3d:
@@ -415,7 +415,7 @@ def patch_qwen3_moe():
 
         _qwen3_lora_extractor = _make_qwen_moe_lora_extractor()
 
-        transformers.models.qwen3_moe.modeling_qwen3_moe.Qwen3MoeExperts._unsloth_lora_extractor_fn = _qwen3_lora_extractor
+        transformers.models.qwen3_moe.modeling_qwen3_moe.Qwen3MoeExperts._bitsloth_lora_extractor_fn = _qwen3_lora_extractor
 
         forward = _make_qwen_moe_experts_forward()
         sparse_moe_block_forward = _make_qwen_moe_sparse_moe_block_forward(
@@ -445,7 +445,7 @@ def patch_qwen3_moe():
 
     # ====================================================================
     # Patch Qwen3MoeForCausalLM.forward for GRPO training
-    # When UNSLOTH_RETURN_HIDDEN_STATES=1, return hidden_states instead of logits
+    # When bitsloth_RETURN_HIDDEN_STATES=1, return hidden_states instead of logits
     # ====================================================================
     try:
         from transformers.models.qwen3_moe.modeling_qwen3_moe import (
@@ -464,7 +464,7 @@ def patch_qwen3_moe():
         )
     except Exception as e:
         if BITSLOTH_ENABLE_LOGGING:
-            logger.warning(f"Unsloth: Could not patch Qwen3MoeForCausalLM.forward: {e}")
+            logger.warning(f"bitsloth: Could not patch Qwen3MoeForCausalLM.forward: {e}")
 
 
 pass

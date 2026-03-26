@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -280,13 +280,13 @@ pass
 
 @torch.inference_mode
 def create_empty_causal_lm(config, dtype=torch.float16):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     from transformers import AutoModelForCausalLM
     from accelerate import init_empty_weights
 
     # Suppress warning on uninited weights
-    old_warn = os.environ.get("UNSLOTH_WARN_UNINITIALIZED", "1")
-    os.environ["UNSLOTH_WARN_UNINITIALIZED"] = "0"
+    old_warn = os.environ.get("bitsloth_WARN_UNINITIALIZED", "1")
+    os.environ["bitsloth_WARN_UNINITIALIZED"] = "0"
     model_name = getattr(config, "model_name", None)
     kwargs = {"torch_dtype" if HAS_TORCH_DTYPE else "dtype": dtype_from_config(config)}
     original_meta_model = None
@@ -316,7 +316,7 @@ def create_empty_causal_lm(config, dtype=torch.float16):
                 original_meta_model = None
     pass
     # Suppress warning on uninited weights
-    os.environ["UNSLOTH_WARN_UNINITIALIZED"] = old_warn
+    os.environ["bitsloth_WARN_UNINITIALIZED"] = old_warn
     if error is not None and original_meta_model is None:
         print(
             f"Failed to create original_meta_model for AutoModelForCausalLM. Error {error}"
@@ -358,7 +358,7 @@ pass
 
 @torch.inference_mode
 def create_empty_vision_model(config, dtype=torch.float16):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     model_type = get_model_type(config)
 
     from transformers.models.siglip.modeling_siglip import SiglipVisionModel
@@ -454,7 +454,7 @@ def create_empty_vision_model(config, dtype=torch.float16):
 
 @torch.inference_mode
 def create_empty_model(config, dtype=torch.float16, is_vision_model=False):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
 
     if is_vision_model:
         new_model, original_meta_model, num_layers = create_empty_vision_model(
@@ -929,7 +929,7 @@ def extract_vision_layers(vllm_internals, state_dict, quant_state_dict, get_stat
                         quant_state_dict[f"{layer_path}"] = state_dict[f"{layer_path}"]
                     else:
                         print(
-                            f"Unsloth: Skipping layer '{layer_path}' of unexpected type: {type(layer_module)}"
+                            f"bitsloth: Skipping layer '{layer_path}' of unexpected type: {type(layer_module)}"
                         )
 
     # Extract non-layered vision components using a more robust method
@@ -957,7 +957,7 @@ def extract_vision_layers(vllm_internals, state_dict, quant_state_dict, get_stat
                         quant_state_dict[full_param_path] = param.data
             else:
                 print(
-                    f"Unsloth: Skipping non-layered component '{component_path}' of unexpected type: {type(component)}"
+                    f"bitsloth: Skipping non-layered component '{component_path}' of unexpected type: {type(component)}"
                 )
 
     # for mllama. vLLM uses ColumnParallelConv2dPatch which has _linear.weight of shape torch.Size([1280, 588])

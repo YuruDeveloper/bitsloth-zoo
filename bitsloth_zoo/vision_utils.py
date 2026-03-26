@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -30,7 +30,7 @@
 
 __all__ = [
     "process_vision_info",
-    "UnslothVisionDataCollator",
+    "bitslothVisionDataCollator",
 ]
 
 IMAGE_TOKENS = [
@@ -95,7 +95,7 @@ VIDEO_TOTAL_PIXELS = int(
     float(os.environ.get("VIDEO_MAX_PIXELS", 128000 * 28 * 28 * 0.9))
 )
 if BITSLOTH_ENABLE_LOGGING:
-    logger.info(f"Unsloth: set VIDEO_TOTAL_PIXELS: {VIDEO_TOTAL_PIXELS}")
+    logger.info(f"bitsloth: set VIDEO_TOTAL_PIXELS: {VIDEO_TOTAL_PIXELS}")
 FRAME_FACTOR = 2
 FPS = 2.0
 FPS_MIN_FRAMES = 4
@@ -260,7 +260,7 @@ def smart_nframes(
         if nframes > total_frames:
             if BITSLOTH_ENABLE_LOGGING:
                 logger.warning(
-                    f"Unsloth: smart_nframes: nframes[{nframes}] > total_frames[{total_frames}]"
+                    f"bitsloth: smart_nframes: nframes[{nframes}] > total_frames[{total_frames}]"
                 )
         nframes = min(min(max(nframes, min_frames), max_frames), total_frames)
         nframes = floor_by_factor(nframes, FRAME_FACTOR)
@@ -309,7 +309,7 @@ def _read_video_torchvision(
     total_frames, video_fps = video.size(0), video_fps
     if BITSLOTH_ENABLE_LOGGING:
         logger.info(
-            f"Unsloth: torchvision:  {video_path=}, {total_frames=}, {video_fps=}, time={time.time() - st:.3f}s"
+            f"bitsloth: torchvision:  {video_path=}, {total_frames=}, {video_fps=}, time={time.time() - st:.3f}s"
         )
     nframes = smart_nframes(ele, total_frames=total_frames, video_fps=video_fps)
     idx = torch.linspace(0, total_frames - 1, nframes).round().long()
@@ -380,7 +380,7 @@ def calculate_video_frame_range(
 
     if BITSLOTH_ENABLE_LOGGING:
         logger.info(
-            f"Unsloth: calculate video frame range: {start_frame=}, {end_frame=}, {total_frames=} from {video_start=}, {video_end=}, {video_fps=:.3f}"
+            f"bitsloth: calculate video frame range: {start_frame=}, {end_frame=}, {total_frames=} from {video_start=}, {video_end=}, {video_fps=:.3f}"
         )
     return start_frame, end_frame, end_frame - start_frame + 1
 
@@ -416,7 +416,7 @@ def _read_video_decord(
     video = torch.tensor(video).permute(0, 3, 1, 2)  # Convert to TCHW format
     if BITSLOTH_ENABLE_LOGGING:
         logger.info(
-            f"Unsloth: decord:  {video_path=}, {total_frames=}, {video_fps=}, time={time.time() - st:.3f}s"
+            f"bitsloth: decord:  {video_path=}, {total_frames=}, {video_fps=}, time={time.time() - st:.3f}s"
         )
     sample_fps = nframes / max(total_frames, 1e-6) * video_fps
     return video, sample_fps
@@ -454,7 +454,7 @@ def _read_video_torchcodec(
 
     TORCHCODEC_NUM_THREADS = int(os.environ.get("TORCHCODEC_NUM_THREADS", 8))
     if BITSLOTH_ENABLE_LOGGING:
-        logger.info(f"Unsloth: set TORCHCODEC_NUM_THREADS: {TORCHCODEC_NUM_THREADS}")
+        logger.info(f"bitsloth: set TORCHCODEC_NUM_THREADS: {TORCHCODEC_NUM_THREADS}")
     video_path = ele["video"]
     # Support file URI scheme
     if isinstance(video_path, str) and video_path.startswith("file://"):
@@ -479,7 +479,7 @@ def _read_video_torchcodec(
             video = video.permute(0, 3, 1, 2).contiguous()
     if BITSLOTH_ENABLE_LOGGING:
         logger.info(
-            f"Unsloth: torchcodec:  {video_path=}, {total_frames=}, {video_fps=}, time={time.time() - st:.3f}s"
+            f"bitsloth: torchcodec:  {video_path=}, {total_frames=}, {video_fps=}, time={time.time() - st:.3f}s"
         )
     return video, sample_fps
 
@@ -490,13 +490,13 @@ VIDEO_READER_BACKENDS = {
     "torchcodec": _read_video_torchcodec,
 }
 
-FORCE_UNSLOTH_VIDEO_READER = os.getenv("FORCE_UNSLOTH_VIDEO_READER", None)
+FORCE_bitsloth_VIDEO_READER = os.getenv("FORCE_bitsloth_VIDEO_READER", None)
 
 
 @lru_cache(maxsize=1)
 def get_video_reader_backend() -> str:
-    if FORCE_UNSLOTH_VIDEO_READER is not None:
-        video_reader_backend = FORCE_UNSLOTH_VIDEO_READER
+    if FORCE_bitsloth_VIDEO_READER is not None:
+        video_reader_backend = FORCE_bitsloth_VIDEO_READER
     elif is_decord_available():
         video_reader_backend = "decord"
     elif is_torchcodec_available():
@@ -505,11 +505,11 @@ def get_video_reader_backend() -> str:
         video_reader_backend = "torchvision"
     else:
         raise ValueError(
-            "Unsloth: No video reader backend available, please install decord or torchvision or torchcodec to process video inputs."
+            "bitsloth: No video reader backend available, please install decord or torchvision or torchcodec to process video inputs."
         )
     if BITSLOTH_ENABLE_LOGGING:
         logger.info(
-            f"Unsloth: bitsloth_zoo/vision_utils using {video_reader_backend} to read video."
+            f"bitsloth: bitsloth_zoo/vision_utils using {video_reader_backend} to read video."
         )
     return video_reader_backend
 
@@ -524,7 +524,7 @@ def fetch_video(
         except Exception as e:
             if BITSLOTH_ENABLE_LOGGING:
                 logger.warning(
-                    f"Unsloth: video_reader_backend {video_reader_backend} error, use torchvision as default, msg: {e}"
+                    f"bitsloth: video_reader_backend {video_reader_backend} error, use torchvision as default, msg: {e}"
                 )
             video, sample_fps = VIDEO_READER_BACKENDS["torchvision"](ele)
 
@@ -540,7 +540,7 @@ def fetch_video(
         if max_pixels_supposed > max_pixels:
             if BITSLOTH_ENABLE_LOGGING:
                 logger.warning(
-                    f"Unsloth: The given max_pixels[{max_pixels_supposed}] exceeds limit[{max_pixels}]."
+                    f"bitsloth: The given max_pixels[{max_pixels_supposed}] exceeds limit[{max_pixels}]."
                 )
 
         max_pixels = min(max_pixels_supposed, max_pixels)
@@ -689,7 +689,7 @@ def _get_dtype(dtype):
     elif dtype in __DTYPE_MAP:
         return __DTYPE_MAP[dtype]
     else:
-        print(f"Unsloth: {dtype} is not recognized, so we'll default to None")
+        print(f"bitsloth: {dtype} is not recognized, so we'll default to None")
         return None
 
 
@@ -699,8 +699,8 @@ LANCZOS = PIL.Image.Resampling.LANCZOS
 from .dataset_utils import train_on_responses_only as _train_on_responses_only
 
 
-class UnslothVisionDataCollator:
-    # All Unsloth Zoo code licensed under LGPLv3
+class bitslothVisionDataCollator:
+    # All bitsloth Zoo code licensed under LGPLv3
     __slots__ = (
         "padding_token_ids",
         "dtype",
@@ -743,7 +743,7 @@ class UnslothVisionDataCollator:
     ):
         if not hasattr(processor, "image_processor"):
             raise TypeError(
-                "Unsloth: UnslothVisionDataCollator is only for image models!"
+                "bitsloth: bitslothVisionDataCollator is only for image models!"
             )
 
         self.padding_token_ids = get_padding_tokens_ids(processor)
@@ -777,7 +777,7 @@ class UnslothVisionDataCollator:
             try:
                 self.image_size = model.config.vision_config.image_size
             except Exception:
-                print("Unsloth: Model does not have a default image size - using 512")
+                print("bitsloth: Model does not have a default image size - using 512")
                 self.image_size = 512
 
         elif resize == "max":
@@ -790,12 +790,12 @@ class UnslothVisionDataCollator:
             self.image_size = resize
         else:
             raise TypeError(
-                "Unsloth: resize accepts 'min', 'max', a tuple of 2 numbers or 1 number\n"
+                "bitsloth: resize accepts 'min', 'max', a tuple of 2 numbers or 1 number\n"
                 "For example (224, 224) or just 224. The default is 'min' which auto resizes images!"
             )
         if resize_dimension not in [0, 1, "max", "min"]:
             raise TypeError(
-                "Unsloth: resize_dimension accepts 0, 1, 'max' or 'min'\n"
+                "bitsloth: resize_dimension accepts 0, 1, 'max' or 'min'\n"
                 "For example 0 resizes the first dimension, 1 the second, 'max' resizes based on the max of height width, 'min' the min size"
             )
         elif resize_dimension in [0, 1]:
@@ -865,7 +865,7 @@ class UnslothVisionDataCollator:
                 )
                 self.assistant_single_content = True
                 print(
-                    f"Unsloth: {processor.__class__.__name__} only accepts 1 "
+                    f"bitsloth: {processor.__class__.__name__} only accepts 1 "
                     "text field for assistant roles!\n"
                     "We will auto fix the data collator to support it!"
                 )
@@ -976,7 +976,7 @@ class UnslothVisionDataCollator:
         assert isinstance(message, dict)
         if "role" not in message and "content" not in message:
             raise TypeError(
-                "Unsloth: Failed to use vision data collator!\n"
+                "bitsloth: Failed to use vision data collator!\n"
                 "Maybe use `standardize_data_formats` first!"
             )
         content = message.get("content")
@@ -987,7 +987,7 @@ class UnslothVisionDataCollator:
             assert "type" in part
         else:
             raise TypeError(
-                "Unsloth: Failed to use vision data collator!\n"
+                "bitsloth: Failed to use vision data collator!\n"
                 "Your messages must be like:\n"
                 "[{'role':'user', 'content':[{'type':'text', 'text':'Hello!'}]}]"
             )
@@ -1078,7 +1078,7 @@ class UnslothVisionDataCollator:
                         vids = []
         except Exception as e:
             logger.warning(
-                f"Unsloth: _extract_images_for_pc failed to extract images/videos: {e}"
+                f"bitsloth: _extract_images_for_pc failed to extract images/videos: {e}"
             )
             imgs = []
             vids = []

@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -69,7 +69,7 @@ from .device_type import DEVICE_TYPE
 global LORA_REQUEST_ID
 
 
-# Align FlashInfer workspace with Unsloth compiled cache to avoid stale JIT paths.
+# Align FlashInfer workspace with bitsloth compiled cache to avoid stale JIT paths.
 def _maybe_set_flashinfer_workspace_base():
     if os.environ.get("FLASHINFER_WORKSPACE_BASE"):
         return
@@ -80,7 +80,7 @@ def _maybe_set_flashinfer_workspace_base():
         os.environ["FLASHINFER_WORKSPACE_BASE"] = compile_folder
     except Exception:
         os.environ["FLASHINFER_WORKSPACE_BASE"] = os.environ.get(
-            "BITSLOTH_COMPILE_LOCATION", "unsloth_compiled_cache"
+            "BITSLOTH_COMPILE_LOCATION", "bitsloth_compiled_cache"
         )
 
 
@@ -159,7 +159,7 @@ if importlib.util.find_spec("vllm") is not None:
             pass
     pass
 
-    # Allow unsloth dynamic quants to work
+    # Allow bitsloth dynamic quants to work
     def is_layer_skipped_bnb(prefix: str, llm_int8_skip_modules):
         # Split the prefix into its dot-separated components
         components = prefix.split(".")
@@ -170,9 +170,9 @@ if importlib.util.find_spec("vllm") is not None:
 
         # Allow certain layers to not be quantized
         components = set(".".join(components[: i + 1]) for i in range(len(components)))
-        unsloth_check = len(set(llm_int8_skip_modules) & components) != 0
+        bitsloth_check = len(set(llm_int8_skip_modules) & components) != 0
 
-        return vllm_check or unsloth_check
+        return vllm_check or bitsloth_check
 
     pass
 
@@ -313,7 +313,7 @@ if importlib.util.find_spec("vllm") is not None:
     pass
 
     def patch_vllm_bitsandbytes():
-        # All Unsloth Zoo code licensed under LGPLv3
+        # All bitsloth Zoo code licensed under LGPLv3
         import vllm.model_executor.layers.quantization.bitsandbytes
 
         vllm.model_executor.layers.quantization.bitsandbytes.is_layer_skipped_bnb = (
@@ -338,13 +338,13 @@ if importlib.util.find_spec("vllm") is not None:
     class BitsAndBytesConfig(
         vllm.model_executor.layers.quantization.bitsandbytes.BitsAndBytesConfig
     ):
-        # All Unsloth Zoo code licensed under LGPLv3
+        # All bitsloth Zoo code licensed under LGPLv3
         def __init__(self, *args, **kwargs):
             dtype = os.environ.get(
-                "UNSLOTH_bnb_4bit_compute_dtype", kwargs["bnb_4bit_compute_dtype"]
+                "bitsloth_bnb_4bit_compute_dtype", kwargs["bnb_4bit_compute_dtype"]
             )
             kwargs["bnb_4bit_compute_dtype"] = dtype
-            print(f"Unsloth: vLLM Bitsandbytes config using kwargs = {kwargs}")
+            print(f"bitsloth: vLLM Bitsandbytes config using kwargs = {kwargs}")
             super().__init__(*args, **kwargs)
 
         pass
@@ -352,7 +352,7 @@ if importlib.util.find_spec("vllm") is not None:
     pass
 
     def patch_vllm_compute_dtype(dtype=torch.float16):
-        # All Unsloth Zoo code licensed under LGPLv3
+        # All bitsloth Zoo code licensed under LGPLv3
         # vLLM defaults to using the model config file's compute_dtype
         # We shall fix it dynamically!
         old_config = (
@@ -362,7 +362,7 @@ if importlib.util.find_spec("vllm") is not None:
         dtype = str(dtype)
         if dtype.startswith("torch."):
             dtype = dtype[len("torch.") :]
-        os.environ["UNSLOTH_bnb_4bit_compute_dtype"] = dtype
+        os.environ["bitsloth_bnb_4bit_compute_dtype"] = dtype
 
         vllm.model_executor.layers.quantization.bitsandbytes.BitsAndBytesConfig = (
             BitsAndBytesConfig
@@ -372,13 +372,13 @@ if importlib.util.find_spec("vllm") is not None:
     pass
 
     def unpatch_vllm_compute_dtype(old_config):
-        # All Unsloth Zoo code licensed under LGPLv3
+        # All bitsloth Zoo code licensed under LGPLv3
         import vllm.model_executor.layers.quantization.bitsandbytes
 
         vllm.model_executor.layers.quantization.bitsandbytes.BitsAndBytesConfig = (
             old_config
         )
-        del os.environ["UNSLOTH_bnb_4bit_compute_dtype"]
+        del os.environ["bitsloth_bnb_4bit_compute_dtype"]
 
     pass
 
@@ -431,7 +431,7 @@ if importlib.util.find_spec("vllm") is not None:
             )
         except:
             pass
-        if os.getenv("UNSLOTH_DO_NOT_PATCH_V0_LRU_LORA_MANAGER", "0") == "1":
+        if os.getenv("bitsloth_DO_NOT_PATCH_V0_LRU_LORA_MANAGER", "0") == "1":
             return
         try:
             import vllm.worker.model_runner
@@ -563,7 +563,7 @@ if importlib.util.find_spec("bitsandbytes") is not None:
             # Patch over the compute dtype for vLLM
             dtype=getattr(
                 torch,
-                os.environ.get("UNSLOTH_bnb_4bit_compute_dtype", qs_dict["dtype"]),
+                os.environ.get("bitsloth_bnb_4bit_compute_dtype", qs_dict["dtype"]),
             ),
             shape=torch.Size(qs_dict["shape"])
             if qs_dict["shape"] is not None
@@ -578,9 +578,9 @@ if importlib.util.find_spec("bitsandbytes") is not None:
     import bitsandbytes.nn.modules
 
     class Linear4bit(bitsandbytes.nn.modules.Linear4bit):
-        # All Unsloth Zoo code licensed under LGPLv3
+        # All bitsloth Zoo code licensed under LGPLv3
         def __init__(self, *args, **kwargs):
-            compute_dtype = os.environ.get("UNSLOTH_bnb_4bit_compute_dtype", None)
+            compute_dtype = os.environ.get("bitsloth_bnb_4bit_compute_dtype", None)
             if compute_dtype is not None:
                 compute_dtype = getattr(torch, compute_dtype)
                 kwargs["compute_dtype"] = compute_dtype
@@ -591,24 +591,24 @@ if importlib.util.find_spec("bitsandbytes") is not None:
     pass
 
     def patch_bitsandbytes_quant_state():
-        # All Unsloth Zoo code licensed under LGPLv3
+        # All bitsloth Zoo code licensed under LGPLv3
         bitsandbytes.functional.QuantState.from_dict = from_dict
         bitsandbytes.nn.modules.Linear4bit = Linear4bit
 
     pass
 
     def patch_bitsandbytes_compute_dtype(dtype):
-        # All Unsloth Zoo code licensed under LGPLv3
+        # All bitsloth Zoo code licensed under LGPLv3
         dtype = str(dtype)
         if dtype.startswith("torch."):
             dtype = dtype[len("torch.") :]
-        os.environ["UNSLOTH_bnb_4bit_compute_dtype"] = dtype
+        os.environ["bitsloth_bnb_4bit_compute_dtype"] = dtype
         return
 
     pass
 
     def unpatch_bitsandbytes_compute_dtype():
-        del os.environ["UNSLOTH_bnb_4bit_compute_dtype"]
+        del os.environ["bitsloth_bnb_4bit_compute_dtype"]
         return
 
     pass
@@ -647,7 +647,7 @@ def patch_vllm_enable_sleep_mode():
         from vllm.utils.platform_utils import is_pin_memory_available
     from typing import Optional, Union, Tuple, Any
 
-    logger.info(f"Unsloth: Enabling vLLM standby mode")
+    logger.info(f"bitsloth: Enabling vLLM standby mode")
 
     def __init__(self):
         # This is a replica of the original CuMemAllocator.__init__()
@@ -709,7 +709,7 @@ def patch_vllm_enable_sleep_mode():
             total_offloads += 1
             handle = data.handle
             if data.tag == "weights":
-                # In unsloth's case we have weights managed by unsloth. So we neither offload/delete them nor onload/create them here.
+                # In bitsloth's case we have weights managed by bitsloth. So we neither offload/delete them nor onload/create them here.
                 continue
             if data.tag in offload_tags:
                 size_in_bytes = handle[1]
@@ -752,7 +752,7 @@ def patch_vllm_enable_sleep_mode():
         delete_memory()
         for ptr, data in self.pointer_to_data.items():
             if data.tag == "weights":
-                # In unsloth's case we have weights managed by unsloth. So we neither offload/delete them nor onload/create them here.
+                # In bitsloth's case we have weights managed by bitsloth. So we neither offload/delete them nor onload/create them here.
                 continue
             if tags is None or data.tag in tags:
                 handle = data.handle
@@ -865,12 +865,12 @@ def patch_vllm_graph_capture():
     try:
         from vllm.v1.worker.gpu_model_runner import GPUModelRunner, logger
 
-        logger.info("Unsloth: Patching vLLM v1 graph capture")
+        logger.info("bitsloth: Patching vLLM v1 graph capture")
         original_capture_model_v1 = GPUModelRunner.capture_model
 
         @wraps(original_capture_model_v1)
         def capture_model_wrapper_v1(self, *args, **kwargs):
-            logger.info("Unsloth: Running patched vLLM v1 `capture_model`.")
+            logger.info("bitsloth: Running patched vLLM v1 `capture_model`.")
             start_time = time.perf_counter()
 
             with suppress_gc_collect():
@@ -878,7 +878,7 @@ def patch_vllm_graph_capture():
 
             end_time = time.perf_counter()
             logger.info(
-                "Unsloth: Patched vLLM v1 graph capture finished in %.0f secs.",
+                "bitsloth: Patched vLLM v1 graph capture finished in %.0f secs.",
                 end_time - start_time,
             )
             for _ in range(2):
@@ -889,19 +889,19 @@ def patch_vllm_graph_capture():
         pass
         GPUModelRunner.capture_model = capture_model_wrapper_v1
     except Exception as e:
-        print(f"Unsloth: Could not patch vLLM V1 graph capture: {e}")
+        print(f"bitsloth: Could not patch vLLM V1 graph capture: {e}")
 
     if Version(vllm.__version__) < Version("0.11.0"):
         # Also patch vLLM v0. vLLM v0 is deprecated in vLLM v0.11.0 so only do when appropriate.
         try:
             from vllm.worker.model_runner import GPUModelRunnerBase, logger
 
-            logger.info("Unsloth: Patching vLLM v0 graph capture")
+            logger.info("bitsloth: Patching vLLM v0 graph capture")
             original_capture_model_v0 = GPUModelRunnerBase.capture_model
 
             @wraps(original_capture_model_v0)
             def capture_model_wrapper_v0(self, *args, **kwargs):
-                logger.info("Unsloth: Running patched vLLM v0 `capture_model`.")
+                logger.info("bitsloth: Running patched vLLM v0 `capture_model`.")
                 start_time = time.perf_counter()
 
                 with suppress_gc_collect():
@@ -909,7 +909,7 @@ def patch_vllm_graph_capture():
 
                 end_time = time.perf_counter()
                 logger.info(
-                    "Unsloth: Patched vLLM v0 graph capture finished in %.0f secs.",
+                    "bitsloth: Patched vLLM v0 graph capture finished in %.0f secs.",
                     end_time - start_time,
                 )
                 for _ in range(2):
@@ -920,7 +920,7 @@ def patch_vllm_graph_capture():
             pass
             GPUModelRunnerBase.capture_model = capture_model_wrapper_v0
         except Exception as e:
-            print(f"Unsloth: Could not patch vLLM V0 graph capture: {e}")
+            print(f"bitsloth: Could not patch vLLM V0 graph capture: {e}")
 
 
 pass
@@ -929,7 +929,7 @@ pass
 def patch_vllm(debug=True):
     # Temporary patch to disable multiprocessing for vLLM
     # Allows accessing model_executor
-    logger.info(f"Unsloth: Patching vLLM")
+    logger.info(f"bitsloth: Patching vLLM")
     os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"] = "0"
     if debug or os.getenv("BITSLOTH_ENABLE_LOGGING", "0") == "1":
         os.environ["VLLM_LOGGING_LEVEL"] = "INFO"
@@ -942,17 +942,17 @@ def patch_vllm(debug=True):
     if os.getenv("BITSLOTH_VLLM_STANDBY", "0") == "1":
         if Version("0.10.0") <= Version(vllm_version) < Version("0.11.0"):
             raise RuntimeError(
-                "Unsloth: vLLM 0.10.x crashes with std::bad_alloc when standby mode is "
+                "bitsloth: vLLM 0.10.x crashes with std::bad_alloc when standby mode is "
                 "enabled due to insufficient memory headroom in CuMemAllocator.\n"
                 "Please update vLLM: pip install --upgrade vllm>=0.11.2"
             )
         if Version("0.14.0") <= Version(vllm_version) < Version("0.15.0"):
             raise RuntimeError(
-                "Unsloth: vLLM 0.14.x has a known bug (cudaErrorIllegalAddress) in "
+                "bitsloth: vLLM 0.14.x has a known bug (cudaErrorIllegalAddress) in "
                 "CuMemAllocator during sleep/wake cycles which crashes standby mode.\n"
                 "Please update vLLM: pip install --upgrade vllm>=0.15.1"
             )
-        logger.info(f"Unsloth: Patching vLLM to enable standby.")
+        logger.info(f"bitsloth: Patching vLLM to enable standby.")
         patch_vllm_enable_sleep_mode()
     patch_vllm_graph_capture()
     global LORA_REQUEST_ID
@@ -966,12 +966,12 @@ def vllm_dynamic_quant_supported(
     model_name,
     config,
 ) -> bool:
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
 
-    # Check if vLLM supports some Unsloth dynamic quants
+    # Check if vLLM supports some bitsloth dynamic quants
     # Sometimes we quantize modules within a layer, but not an entire layer
     # If so, then we cannot use dynamic quants for now
-    if not model_name.lower().endswith("unsloth-bnb-4bit"):
+    if not model_name.lower().endswith("bitsloth-bnb-4bit"):
         return True
     if "quantization_config" not in config:
         return True
@@ -1028,7 +1028,7 @@ def get_vllm_state_dict(
 def _get_vllm_state_dict(
     llm, return_state_dict=False, config=None, is_vision_model=False
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Unmerges vLLM modules and returns HF equivalent state_dict
     # vllm_state_dict = {}
     try:
@@ -1054,11 +1054,11 @@ def _get_vllm_state_dict(
                 vllm_state_dict[weight_name] = to_cuda_fx(*cuda_data)
             pass
             raise NotImplementedError(
-                "Unsloth: Currently vLLM RPC is not yet fully enabled!"
+                "bitsloth: Currently vLLM RPC is not yet fully enabled!"
             )
         except Exception as e:
             raise RuntimeError(
-                f"Unsloth: Cannot get internal vLLM states with error = {str(e)}"
+                f"bitsloth: Cannot get internal vLLM states with error = {str(e)}"
             )
     pass
 
@@ -1092,7 +1092,7 @@ def _get_vllm_state_dict(
             maybe_post_process_fp8_weight_block
         )
     except Exception as e:
-        logger.info(f"Unsloth: Could not import vLLM fp8_utils: {e}")
+        logger.info(f"bitsloth: Could not import vLLM fp8_utils: {e}")
         needs_transpose_check = False
 
     is_deep_gemm_supported = False
@@ -1106,7 +1106,7 @@ def _get_vllm_state_dict(
 
             is_deep_gemm_supported = vllm_is_deep_gemm_supported()
         except Exception as e:
-            logger.info(f"Unsloth: Could not import vLLM deep_gemm: {e}")
+            logger.info(f"bitsloth: Could not import vLLM deep_gemm: {e}")
 
         try:
             cutlass_block_fp8_supported = (
@@ -1114,7 +1114,7 @@ def _get_vllm_state_dict(
             )
         except Exception as e:
             logger.info(
-                f"Unsloth: Could not import vLLM cutlass_block_fp8_supported: {e}"
+                f"bitsloth: Could not import vLLM cutlass_block_fp8_supported: {e}"
             )
         pass
 
@@ -1139,7 +1139,7 @@ def _get_vllm_state_dict(
                 weight_scale = proj.weight_scale_inv
             else:
                 raise ValueError(
-                    f"Unsloth: Cannot find weight scale for FP8 weight {prefix}"
+                    f"bitsloth: Cannot find weight scale for FP8 weight {prefix}"
                 )
 
             offsets = [0] + proj.logical_widths  # [q, k, v] sizes
@@ -1179,7 +1179,7 @@ def _get_vllm_state_dict(
                             # https://github.com/vllm-project/vllm/blob/294c805f1df9ddf62c2290989710da9d48ab4973/vllm/model_executor/layers/quantization/utils/fp8_utils.py#L1172-L1179
                             weight_scale = weight_scale.T
                             logger.info(
-                                f"Unsloth: Transposed weight scale for {prefix} for weight shape {qweight.shape} and scale shape {weight_scale.shape}"
+                                f"bitsloth: Transposed weight scale for {prefix} for weight shape {qweight.shape} and scale shape {weight_scale.shape}"
                             )
                     pass
                     a, b = qweight.shape
@@ -1189,7 +1189,7 @@ def _get_vllm_state_dict(
                         a // p == proj.weight_block_size[0]
                         and b // q == proj.weight_block_size[1]
                     ), (
-                        f"Unsloth: vLLM weight for {prefix} has unexpected weight shape {qweight.shape} and scale {weight_scale.shape} and block size {proj.weight_block_size}"
+                        f"bitsloth: vLLM weight for {prefix} has unexpected weight shape {qweight.shape} and scale {weight_scale.shape} and block size {proj.weight_block_size}"
                     )
                 else:
                     # This is dynamic quantization (aka per row or per column). The scale is of shape [n,1]
@@ -1276,7 +1276,7 @@ def _get_vllm_state_dict(
         vllm_text_model_prefix = "model.language_model"
         vllm_text_model = vllm_internals.language_model.model
     else:
-        raise RuntimeError(f"Unsloth: Cannot find vllm_internal_model!")
+        raise RuntimeError(f"bitsloth: Cannot find vllm_internal_model!")
 
     embed_tokens = vllm_text_model.embed_tokens
     # Use get_state_dict for consistent extraction and automatic truncation
@@ -1389,7 +1389,7 @@ def _get_vllm_state_dict(
 
     if len(skipped_layernorms) != 0:
         print(
-            f"Unsloth: Just some info: will skip parsing {list(set(skipped_layernorms))}"
+            f"bitsloth: Just some info: will skip parsing {list(set(skipped_layernorms))}"
         )
     pass
 
@@ -1430,7 +1430,7 @@ pass
 
 @torch.inference_mode
 def assert_same_state_dict(old_state_dict, new_state_dict):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Check if state_dict are equivalent
     # hf, vllm
 
@@ -1446,9 +1446,9 @@ def assert_same_state_dict(old_state_dict, new_state_dict):
         missing_from_hf = new_state_dict.keys() - old_state_dict.keys()
         missing_from_vllm = old_state_dict.keys() - new_state_dict.keys()
         print(
-            f"Unsloth: Failed comparing state_dict with Missing from hf: {missing_from_hf}\nMissing from vllm: {missing_from_vllm}"
+            f"bitsloth: Failed comparing state_dict with Missing from hf: {missing_from_hf}\nMissing from vllm: {missing_from_vllm}"
         )
-        raise RuntimeError(f"Unsloth: Failed comparing state_dict with {difference}")
+        raise RuntimeError(f"bitsloth: Failed comparing state_dict with {difference}")
     pass
 
     failures = {}
@@ -1511,7 +1511,7 @@ def assert_same_state_dict(old_state_dict, new_state_dict):
             [f"[{key}]\n{str(error)}" for key, error in failures.items()]
         )
         raise RuntimeError(
-            f"Unsloth: Failed comparing state_dict with {len(failures)}: {error_message}"
+            f"bitsloth: Failed comparing state_dict with {len(failures)}: {error_message}"
         )
     pass
 
@@ -1527,7 +1527,7 @@ def convert_vllm_to_huggingface(
     bnb_config=None,
     is_vision_model=False,
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Unmerges vLLM modules to create HF compatible model
     set_dtype_in_config(config, dtype)
     new_model, original_meta_model, layer_count, layer_names = create_empty_model(
@@ -1556,10 +1556,10 @@ def convert_vllm_to_huggingface(
                 try:
                     from transformers.integrations.finegrained_fp8 import (
                         FP8Linear,
-                    )  # This has patched forward pass for LoRA and training support. Patched in unsloth/kernels/fp8.py
+                    )  # This has patched forward pass for LoRA and training support. Patched in bitsloth/kernels/fp8.py
                 except:
                     raise ImportError(
-                        "Unsloth: FP8 models need importing FP8Linear from `transformers.integrations.finegrained_fp8` but we don't see it."
+                        "bitsloth: FP8 models need importing FP8Linear from `transformers.integrations.finegrained_fp8` but we don't see it."
                     )
             elif quant_method == "fbgemm_fp8":
                 kwargs["input_scale_ub"] = torch.tensor(
@@ -1572,7 +1572,7 @@ def convert_vllm_to_huggingface(
                     )  # This has patched forward pass for LoRA and training support
                 except:
                     raise ImportError(
-                        "Unsloth: FP8 models need importing FbgemmFP8Linear from `transformers.integrations.fbgemm_fp8` but we don't see it."
+                        "bitsloth: FP8 models need importing FbgemmFP8Linear from `transformers.integrations.fbgemm_fp8` but we don't see it."
                     )
             elif quant_method == "compressed-tensors":
                 kwargs["activation_scheme"] = "dynamic"  # mark it dynamic for now
@@ -1587,10 +1587,10 @@ def convert_vllm_to_huggingface(
                 try:
                     from transformers.integrations.finegrained_fp8 import (
                         FP8Linear,
-                    )  # This has patched forward pass for LoRA and training support. Patched in unsloth/kernels/fp8.py
+                    )  # This has patched forward pass for LoRA and training support. Patched in bitsloth/kernels/fp8.py
                 except:
                     raise ImportError(
-                        "Unsloth: FP8 models need importing FP8Linear from `transformers.integrations.finegrained_fp8` but we don't see it."
+                        "bitsloth: FP8 models need importing FP8Linear from `transformers.integrations.finegrained_fp8` but we don't see it."
                     )
         # Get bnb_config flags
         elif bnb_config is not None:
@@ -1804,7 +1804,7 @@ def convert_vllm_to_huggingface(
             # Qwen 2.5 VL has a rotary_pos_emb in vision submodel
             # https://github.com/huggingface/transformers/blob/a871f6f58d49f3a05ae9dae519caa8aa9d919a07/src/transformers/models/qwen2_5_vl/modeling_qwen2_5_vl.py#L337
             assert vision_config is not None, (
-                "Unsloth: vision_config is required for models with vision rotary_pos_emb"
+                "bitsloth: vision_config is required for models with vision rotary_pos_emb"
             )
             head_dim = vision_config.hidden_size // vision_config.num_heads
             module.rotary_pos_emb = module.rotary_pos_emb.__class__(head_dim // 2).to(
@@ -1837,7 +1837,7 @@ def convert_vllm_to_huggingface(
 
     if len(skipped_layernorms) != 0:
         print(
-            f"Unsloth: Just some info: will skip parsing {list(set(skipped_layernorms))}"
+            f"bitsloth: Just some info: will skip parsing {list(set(skipped_layernorms))}"
         )
     return new_model
 
@@ -1859,7 +1859,7 @@ def approximate_vllm_memory_usage(
     parallel_sequences=64,
     cuda_graph_overhead=True,
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Gets approximate max model length and max num sequences
 
     free_memory, total_memory = get_mem_info()
@@ -2011,7 +2011,7 @@ def determine_max_lora_rank(lora_rank=16):
         if max_lora_rank >= lora_rank:
             return max_lora_rank
     raise RuntimeError(
-        f"Unsloth: vLLM does not support LoRA ranks of {lora_rank}.\n"
+        f"bitsloth: vLLM does not support LoRA ranks of {lora_rank}.\n"
         "Only `{possible_max_ranks}` is supported."
     )
 
@@ -2031,7 +2031,7 @@ def vllm_supports_flashinfer(config) -> bool:
         from vllm.model_executor.models.registry import ModelRegistry
     except Exception as e:
         print(
-            f"Unsloth: Failed loading vLLM model class for arch {arch} "
+            f"bitsloth: Failed loading vLLM model class for arch {arch} "
             f"during `vllm_supports_flashinfer`.\n{e}"
         )
         return True
@@ -2052,7 +2052,7 @@ def vllm_supports_flashinfer(config) -> bool:
             break
         except Exception as e:
             print(
-                f"Unsloth: Failed loading vLLM model class for arch {arch} "
+                f"bitsloth: Failed loading vLLM model class for arch {arch} "
                 f"during `vllm_supports_flashinfer`.\n{e}"
             )
             return True
@@ -2114,7 +2114,7 @@ def _get_torchao_fp8_config(fp8_mode: str):
     elif fp8_mode == "block":
         granularity = (PerBlock([1, 128]), PerBlock([128, 128]))
     else:
-        raise ValueError("Unsloth: `load_in_fp8` supports only 'row' or 'block'")
+        raise ValueError("bitsloth: `load_in_fp8` supports only 'row' or 'block'")
 
     return Float8DynamicActivationFloat8WeightConfig(
         granularity=granularity,
@@ -2123,7 +2123,7 @@ def _get_torchao_fp8_config(fp8_mode: str):
 
 
 def load_vllm(
-    model_name: str = "unsloth/Llama-3.2-3B-Instruct-unsloth-bnb-4bit",
+    model_name: str = "bitsloth/Llama-3.2-3B-Instruct-bitsloth-bnb-4bit",
     config=None,
     gpu_memory_utilization: float = 0.8,
     max_seq_length: int = 8192,
@@ -2143,23 +2143,23 @@ def load_vllm(
     conservativeness: float = 1.0,  # For low VRAM devices, scale batches, num_seqs
     max_logprobs: int = 0,
     use_bitsandbytes: bool = True,
-    unsloth_vllm_standby: bool = False,
+    bitsloth_vllm_standby: bool = False,
     is_vision_model: bool = False,
     return_args: bool = False,  # Just return args
     max_num_seqs: int = 256,  # how many seqs to process in parallel. Default vLLM 256
     fp8_mode: Optional[str] = None,
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Create vLLM instance
     assert config is not None
     assert type(use_bitsandbytes) is bool
     assert conservativeness >= 0.0 and conservativeness <= 1.0
 
-    unsloth_vllm_standby = unsloth_vllm_standby or (
+    bitsloth_vllm_standby = bitsloth_vllm_standby or (
         os.getenv("BITSLOTH_VLLM_STANDBY", "0") != "0"
     )
     # This would give the flexibility to override the util we set for standby mode. In some extreme cases, this can be helpful.
-    standby_util_override = os.getenv("UNSLOTH_VLLM_STANDBY_UTIL_OVERRIDE", "0") != "0"
+    standby_util_override = os.getenv("bitsloth_VLLM_STANDBY_UTIL_OVERRIDE", "0") != "0"
 
     free_memory, total_memory = get_mem_info()
     # If T4 ie 15GB, we use 0.85 since it'll rarely OOM. Other GPUs 0.9
@@ -2220,15 +2220,15 @@ def load_vllm(
     if BITSLOTH_ENABLE_LOGGING:
         logger.info(f"standby_target_gpu_util = {standby_target_gpu_util:.4f}")
 
-    if unsloth_vllm_standby and not standby_util_override:
+    if bitsloth_vllm_standby and not standby_util_override:
         if gpu_memory_utilization < standby_target_gpu_util:
             gpu_memory_utilization = standby_target_gpu_util
             print(
-                f"Unsloth: Standby mode is enabled. Changing `gpu_memory_utilization` to {gpu_memory_utilization}."
+                f"bitsloth: Standby mode is enabled. Changing `gpu_memory_utilization` to {gpu_memory_utilization}."
             )
         elif gpu_memory_utilization > standby_target_gpu_util:
             print(
-                f"Unsloth: Standby mode is enabled. However your setting of `gpu_memory_utilization` will OOM.\n"
+                f"bitsloth: Standby mode is enabled. However your setting of `gpu_memory_utilization` will OOM.\n"
                 f"Changing `gpu_memory_utilization` to {standby_target_gpu_util}."
             )
             gpu_memory_utilization = standby_target_gpu_util
@@ -2236,12 +2236,12 @@ def load_vllm(
     if DEVICE_TYPE == "cuda":
         major_version, minor_version = torch.cuda.get_device_capability()
         if major_version < 7:
-            raise NotImplementedError("Unsloth: Your GPU is too old!")
+            raise NotImplementedError("bitsloth: Your GPU is too old!")
 
         # Float8 KV cache only works for 8.0 or higher
         if float8_kv_cache and major_version < 8:
             raise NotImplementedError(
-                "Unsloth: Your GPU is too old for float8 KV cache! Set it to False."
+                "bitsloth: Your GPU is too old for float8 KV cache! Set it to False."
             )
 
     if hasattr(config, "text_config"):
@@ -2253,7 +2253,7 @@ def load_vllm(
     new_max_lora_rank = determine_max_lora_rank(max_lora_rank)
     if new_max_lora_rank != max_lora_rank:
         print(
-            f"Unsloth: Changing the maximum lora rank to {new_max_lora_rank} from {max_lora_rank} for vLLM."
+            f"bitsloth: Changing the maximum lora rank to {new_max_lora_rank} from {max_lora_rank} for vLLM."
         )
     max_lora_rank = new_max_lora_rank
 
@@ -2298,9 +2298,9 @@ def load_vllm(
 
     # Pre-flight warning: if KV cache headroom is very low with standby mode,
     # warn before LLM() is called (which may crash unrecoverably).
-    if memory_left_for_kv_cache_gb < 1.0 and unsloth_vllm_standby:
+    if memory_left_for_kv_cache_gb < 1.0 and bitsloth_vllm_standby:
         print(
-            f"Unsloth: WARNING - Only {memory_left_for_kv_cache_gb:.2f} GB estimated for KV cache on your {total_gb:.1f} GB GPU.\n"
+            f"bitsloth: WARNING - Only {memory_left_for_kv_cache_gb:.2f} GB estimated for KV cache on your {total_gb:.1f} GB GPU.\n"
             f"This may cause an out-of-memory crash with standby mode. Consider lowering gpu_memory_utilization."
         )
 
@@ -2310,10 +2310,10 @@ def load_vllm(
         # chunked prefill is not supported for vLLM V0.
         enable_chunked_prefill = False
         assert not enable_lora, (
-            "Unsloth: MLLama does not support LoRA with fast inference"
+            "bitsloth: MLLama does not support LoRA with fast inference"
         )
         assert max_seq_length >= 8192, (
-            "Unsloth: MLLama requires max_seq_length >= 8192 for fast inference"
+            "bitsloth: MLLama requires max_seq_length >= 8192 for fast inference"
         )
 
     else:
@@ -2325,8 +2325,8 @@ def load_vllm(
 
         if max_num_batched_tokens <= max_seq_length:
             print(
-                f"Unsloth: Your GPU cannot handle sequence lengths of {max_seq_length} due to limited GPU memory.\n"
-                f"Unsloth: Your GPU can only handle approximately the maximum sequence length of {max_seq_length}."
+                f"bitsloth: Your GPU cannot handle sequence lengths of {max_seq_length} due to limited GPU memory.\n"
+                f"bitsloth: Your GPU can only handle approximately the maximum sequence length of {max_seq_length}."
             )
             max_seq_length = max_num_batched_tokens
         pass
@@ -2342,16 +2342,16 @@ def load_vllm(
         _dtype = torch.float16
     if dtype == torch.bfloat16 and _dtype == torch.float16:
         print(
-            "Unsloth: We switched to dtype = torch.float16 since your GPU does not support torch.bfloat16"
+            "bitsloth: We switched to dtype = torch.float16 since your GPU does not support torch.bfloat16"
         )
         dtype = torch.float16
     elif dtype is None:
         dtype = _dtype
-        print(f"Unsloth: Using dtype = {dtype} for vLLM.")
+        print(f"bitsloth: Using dtype = {dtype} for vLLM.")
     elif dtype == torch.float16 or dtype == torch.bfloat16:
         pass
     else:
-        raise NotImplementedError(f"Unsloth: We do not support dtype = {dtype} yet!")
+        raise NotImplementedError(f"bitsloth: We do not support dtype = {dtype} yet!")
 
     free_memory, total_memory = get_mem_info()
 
@@ -2366,7 +2366,7 @@ def load_vllm(
     # See https://docs.vllm.ai/en/latest/serving/env_vars.html
     if (
         importlib.util.find_spec("flashinfer")
-        and os.environ.get("UNSLOTH_VLLM_NO_FLASHINFER", "0") == "0"
+        and os.environ.get("bitsloth_VLLM_NO_FLASHINFER", "0") == "0"
     ):
         # Pre-flight check: FlashInfer JIT-compiles CUDA kernels, requiring nvcc and ninja.
         # If either is missing, skip FlashInfer so vLLM falls back to FLASH_ATTN + native sampler.
@@ -2389,13 +2389,13 @@ def load_vllm(
             if not _has_ninja:
                 _missing.append("ninja (build tool)")
             print(
-                f"Unsloth: FlashInfer requires JIT compilation but {' and '.join(_missing)} "
+                f"bitsloth: FlashInfer requires JIT compilation but {' and '.join(_missing)} "
                 f"{'is' if len(_missing) == 1 else 'are'} not found.\n"
                 f"  vLLM will use FLASH_ATTN attention + PyTorch sampler instead (works fine).\n"
                 f"  To enable FlashInfer, install the missing tools:\n"
                 f"    nvcc  - install the CUDA toolkit or set CUDA_HOME to your CUDA installation\n"
                 f"    ninja - pip install ninja\n"
-                f"  To silence this warning: set UNSLOTH_VLLM_NO_FLASHINFER=1"
+                f"  To silence this warning: set bitsloth_VLLM_NO_FLASHINFER=1"
             )
             # Clear any externally-set FlashInfer env vars so vLLM uses defaults
             if os.environ.get("VLLM_USE_FLASHINFER_SAMPLER", "") == "1":
@@ -2412,7 +2412,7 @@ def load_vllm(
             elif not vllm_supports_flashinfer(config):
                 if os.environ.get("VLLM_ATTENTION_BACKEND", "") == "FLASHINFER":
                     print(
-                        f"Unsloth: `{model_name} does not support `VLLM_ATTENTION_BACKEND==FLASHINFER`. Will disable"
+                        f"bitsloth: `{model_name} does not support `VLLM_ATTENTION_BACKEND==FLASHINFER`. Will disable"
                     )
                 if "VLLM_ATTENTION_BACKEND" in os.environ:
                     del os.environ["VLLM_ATTENTION_BACKEND"]
@@ -2442,7 +2442,7 @@ def load_vllm(
     if DEVICE_TYPE == "cuda":
         major_version, minor_version = torch.cuda.get_device_capability()
         if (major_version < 7) or (major_version == 7 and minor_version < 5):
-            print("Unsloth: Your GPU does not support prefix caching - will disable!")
+            print("bitsloth: Your GPU does not support prefix caching - will disable!")
             enable_prefix_caching = False
     elif DEVICE_TYPE == "hip":
         enable_prefix_caching = True
@@ -2451,7 +2451,7 @@ def load_vllm(
     pass
 
     # Use VLLM_USE_V1 for vllm >= 0.7.4 and CUDA >= 8.0
-    # [FAILS] for bitsandbytes - https://github.com/unslothai/unsloth/issues/2102
+    # [FAILS] for bitsandbytes - https://github.com/bitslothai/bitsloth/issues/2102
     # if importlib.util.find_spec("vllm") and (major_version >= 8):
     #     from importlib.metadata import version as importlib_version
     #     from packaging.version import Version
@@ -2512,7 +2512,7 @@ def load_vllm(
         # In vLLM profiling, each sequence contributes to an image. Which is generally in the order of thousand tokens.
         # We don't want to go beyond 16 sequences for vision models.
         # TODO: In vLLM V1, iirc, the profiling sets a cap on the max seqs based on the budget. Check it out.
-        print(f"Unsloth: Vision model detected, setting approx_max_num_seqs to 1")
+        print(f"bitsloth: Vision model detected, setting approx_max_num_seqs to 1")
         # [TODO] Check this
         approx_max_num_seqs = 1
         # Single image would contribute to 6404 tokens in Llama 3.2 for eg. So have some more for text
@@ -2580,10 +2580,10 @@ def load_vllm(
     pass
 
     print(
-        f"Unsloth: vLLM loading {model_name} with actual GPU utilization = {round(actual_gpu_memory_utilization * 100, 2)}%\n"
-        f"Unsloth: Your GPU has {message} with VRAM = {total_memory_gb} GB.\n"
-        f"Unsloth: Using conservativeness = {conservativeness}. Chunked prefill tokens = {chunked_prefill_tokens}. Num Sequences = {approx_max_num_seqs}.\n"
-        f"Unsloth: vLLM's KV Cache can use up to {round(memory_left_for_kv_cache_gb, 2)} GB. Also swap space = {swap_space} GB."
+        f"bitsloth: vLLM loading {model_name} with actual GPU utilization = {round(actual_gpu_memory_utilization * 100, 2)}%\n"
+        f"bitsloth: Your GPU has {message} with VRAM = {total_memory_gb} GB.\n"
+        f"bitsloth: Using conservativeness = {conservativeness}. Chunked prefill tokens = {chunked_prefill_tokens}. Num Sequences = {approx_max_num_seqs}.\n"
+        f"bitsloth: vLLM's KV Cache can use up to {round(memory_left_for_kv_cache_gb, 2)} GB. Also swap space = {swap_space} GB."
     )
 
     # Get device as well
@@ -2604,7 +2604,7 @@ def load_vllm(
                     combo_kernels = False  # Too slow on less than 80GB GPUs
                 # We still see
                 # AttributeError: 'NullKernelHandler' object has no attribute 'index_to_str'
-                # Try unsloth/gemma-3-4b-it
+                # Try bitsloth/gemma-3-4b-it
                 combo_kernels = False
             else:
                 cudagraphs = True
@@ -2613,7 +2613,7 @@ def load_vllm(
             compile_flags = dict(
                 level=3,
                 backend="inductor",
-                # cache_dir = "unsloth_compiled_vllm_cache", # Pytorch fails to load from cache
+                # cache_dir = "bitsloth_compiled_vllm_cache", # Pytorch fails to load from cache
                 # compile_sizes = [1, 2, 4, 8, 16],
                 # cudagraph_capture_sizes = [1, 2, 4, 8, 16],
                 # max_capture_size = 16,
@@ -2648,24 +2648,24 @@ def load_vllm(
                     del compile_flags["full_cuda_graph"]
                 except Exception as e:
                     print(
-                        "Unsloth: Failed getting `from vllm.config import CUDAGraphMode` and `CUDAGraphMode.FULL_AND_PIECEWISE`"
+                        "bitsloth: Failed getting `from vllm.config import CUDAGraphMode` and `CUDAGraphMode.FULL_AND_PIECEWISE`"
                     )
             else:
                 print(
-                    "Unsloth: `cudagraph_mode` is not in `from vllm.config import CompilationConfig`"
+                    "bitsloth: `cudagraph_mode` is not in `from vllm.config import CompilationConfig`"
                 )
             old_keys = list(compile_flags.keys())
             for key in old_keys:
                 if key not in good_keys:
                     del compile_flags[key]
                     print(
-                        f"Unsloth: Not an error, but `{key}` is not supported in vLLM.config.CompilationConfig. Skipping."
+                        f"bitsloth: Not an error, but `{key}` is not supported in vLLM.config.CompilationConfig. Skipping."
                     )
                 pass
             pass
             compilation_config = CompilationConfig(**compile_flags)
         except Exception as e:
-            print(f"Unsloth: FAILED getting compilation_config with error = {str(e)}")
+            print(f"bitsloth: FAILED getting compilation_config with error = {str(e)}")
     pass
 
     engine_args = dict(
@@ -2695,7 +2695,7 @@ def load_vllm(
         device=device,
         # New vLLM versions need to pass this in!
         # worker_extension_cls   = "bitsloth_zoo.vllm_rlhf_utils.ColocateWorkerExtension",
-        enable_sleep_mode=unsloth_vllm_standby,
+        enable_sleep_mode=bitsloth_vllm_standby,
     )
     if is_vision_model:
         # To reduce memory usage, we limit the number of images/videos per prompt
@@ -2717,7 +2717,7 @@ def load_vllm(
                 # Disable for A100, L40 etc
                 disable_cascade_attn = True
                 print(
-                    "Unsloth: Disabling `disable_cascade_attn` in vLLM to allow for better on policy RL!"
+                    "bitsloth: Disabling `disable_cascade_attn` in vLLM to allow for better on policy RL!"
                 )
             engine_args["disable_cascade_attn"] = disable_cascade_attn
 
@@ -2731,7 +2731,7 @@ def load_vllm(
             if _head_dim is not None and _head_dim >= 256:
                 engine_args["block_size"] = 32
                 logger.info(
-                    f"Unsloth: Setting vLLM block_size=32 for head_dim={_head_dim} to avoid FlashInfer bug on Blackwell."
+                    f"bitsloth: Setting vLLM block_size=32 for head_dim={_head_dim} to avoid FlashInfer bug on Blackwell."
                 )
     pass
 
@@ -2756,7 +2756,7 @@ def load_vllm(
         if key not in good_keys:
             del engine_args[key]
             print(
-                f"Unsloth: Not an error, but `{key}` is not supported in vLLM. Skipping."
+                f"bitsloth: Not an error, but `{key}` is not supported in vLLM. Skipping."
             )
         pass
     pass
@@ -2785,14 +2785,14 @@ def load_vllm(
                 torch.cuda.empty_cache()
             pass
             error = str(error)
-            if trials >= 2 or unsloth_vllm_standby:
+            if trials >= 2 or bitsloth_vllm_standby:
                 # Sleep mode uses CuMemAllocator which can't run multiple instances in single process.
                 # We can't do retry because vLLM will fail to load with said error.
-                if unsloth_vllm_standby and (
+                if bitsloth_vllm_standby and (
                     "memory" in error.lower() or "alloc" in error.lower()
                 ):
                     raise MemoryError(
-                        f"Unsloth: Your GPU ran out of memory loading vLLM with standby mode enabled.\n"
+                        f"bitsloth: Your GPU ran out of memory loading vLLM with standby mode enabled.\n"
                         f"Your GPU has {total_gb:.1f} GB VRAM with gpu_memory_utilization={gpu_memory_utilization:.3f}.\n"
                         f"Try one of these fixes:\n"
                         f"  1. Lower gpu_memory_utilization: model, tokenizer = FastLanguageModel.from_pretrained(..., gpu_memory_utilization=0.6)\n"
@@ -2807,7 +2807,7 @@ def load_vllm(
                 engine_args["max_num_seqs"] = approx_max_num_seqs
                 engine_args["gpu_memory_utilization"] *= 0.85
                 print(
-                    f"Unsloth: Retrying vLLM to process {approx_max_num_seqs} sequences and {max_num_batched_tokens} tokens in tandem.\n"
+                    f"bitsloth: Retrying vLLM to process {approx_max_num_seqs} sequences and {max_num_batched_tokens} tokens in tandem.\n"
                     f"Error:\n{error}"
                 )
             else:
@@ -2820,8 +2820,8 @@ def load_vllm(
                         f"FlashInfer failed to JIT-compile: nvcc (CUDA compiler) not found.\n"
                         f"Fix options:\n"
                         f"  1. Install the CUDA toolkit (nvcc) or set CUDA_HOME to your CUDA installation\n"
-                        f"  2. Disable FlashInfer: set environment variable UNSLOTH_VLLM_NO_FLASHINFER=1\n"
-                        f"     e.g. import os; os.environ['UNSLOTH_VLLM_NO_FLASHINFER'] = '1'  # before importing unsloth\n"
+                        f"  2. Disable FlashInfer: set environment variable bitsloth_VLLM_NO_FLASHINFER=1\n"
+                        f"     e.g. import os; os.environ['bitsloth_VLLM_NO_FLASHINFER'] = '1'  # before importing bitsloth\n"
                         f"Original error: {error}"
                     )
                 elif ("ninja" in error_lower) and (
@@ -2833,8 +2833,8 @@ def load_vllm(
                         f"FlashInfer failed to JIT-compile: ninja (build tool) not found.\n"
                         f"Fix options:\n"
                         f"  1. Install ninja: pip install ninja\n"
-                        f"  2. Disable FlashInfer: set environment variable UNSLOTH_VLLM_NO_FLASHINFER=1\n"
-                        f"     e.g. import os; os.environ['UNSLOTH_VLLM_NO_FLASHINFER'] = '1'  # before importing unsloth\n"
+                        f"  2. Disable FlashInfer: set environment variable bitsloth_VLLM_NO_FLASHINFER=1\n"
+                        f"     e.g. import os; os.environ['bitsloth_VLLM_NO_FLASHINFER'] = '1'  # before importing bitsloth\n"
                         f"Original error: {error}"
                     )
                 raise RuntimeError(error)
@@ -2848,8 +2848,8 @@ def load_vllm(
 
     # Check if sleep mode, and send the model to sleep
     # This is to counteract OOMs before GRPO is launched like pre-inference runs
-    # if unsloth_vllm_standby and not standby_util_override:
-    #     print(f"Unsloth: Standby mode is enabled. Pre-sleeping vLLM model to reduce OOMs.")
+    # if bitsloth_vllm_standby and not standby_util_override:
+    #     print(f"bitsloth: Standby mode is enabled. Pre-sleeping vLLM model to reduce OOMs.")
     #     llm.sleep(os.environ.get('VLLM_SLEEP_MODE', "1"))
 
     # Cleanup
@@ -2863,7 +2863,7 @@ pass
 
 
 def create_batches(requests, num_sequences=64):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # llm.generate must be batched!
     n_splits = int(math.ceil(len(requests) / num_sequences))
     offsets = np.arange(0, len(requests), num_sequences)
@@ -2878,7 +2878,7 @@ pass
 
 @torch.inference_mode
 def save_lora(model, save_directory, *args, **kwargs):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     state_dict = model.state_dict()
     dtype = model.get_input_embeddings().weight.dtype
     # Cast LoRA to float16 / bfloat16
@@ -2907,7 +2907,7 @@ pass
 
 
 def vllm_lora_already_loaded(model):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Check if LoRA is loaded - if not, we should load the first one
     m = model.vllm_engine.llm_engine.model_executor.driver_worker.model_runner
     lora_cache = m.lora_manager._adapter_manager._active_adapters.cache
@@ -2922,7 +2922,7 @@ pass
 
 
 def prepare_vllm_lora_loading(model):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Get all vLLM LoRAs
     assert hasattr(model, "vllm_engine")
 
@@ -3041,7 +3041,7 @@ pass
 
 
 def load_lora_directly(model):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Load LoRAs directly from model into vLLM internal LoRAs
     model_loras_A = model.model_loras_A
     model_loras_B = model.model_loras_B
@@ -3138,7 +3138,7 @@ def load_lora(model, save_directory, load_tensors=False, lora_request_id=None):
     #     return model.saved_vllm_lora_request
     # pass
 
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     global LORA_REQUEST_ID
     if LORA_REQUEST_ID is None:
         LORA_REQUEST_ID = 1
@@ -3152,7 +3152,7 @@ def load_lora(model, save_directory, load_tensors=False, lora_request_id=None):
             # We need to save and load the config file once!
             model.peft_config["default"].save_pretrained(save_directory)
         elif not os.path.exists(save_directory):
-            raise OSError(f"Unsloth: LoRA filepath = {save_directory} does not exist!")
+            raise OSError(f"bitsloth: LoRA filepath = {save_directory} does not exist!")
     pass
 
     from vllm.lora.request import LoRARequest
@@ -3200,11 +3200,11 @@ pass
 
 
 def generate_batches(llm, inputs, n_batches=None, lora_request=None, *args, **kwargs):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Cannot just use llm.generate or will OOM - split into batches
     if n_batches is None:
-        if "UNSLOTH_VLLM_BATCHES" in os.environ:
-            n_batches = int(os.environ["UNSLOTH_VLLM_BATCHES"])
+        if "bitsloth_VLLM_BATCHES" in os.environ:
+            n_batches = int(os.environ["bitsloth_VLLM_BATCHES"])
         else:
             free_memory, total_memory = get_mem_info()
             total_memory_gb = round(total_memory / 1024 / 1024 / 1024, 2)
@@ -3217,11 +3217,11 @@ def generate_batches(llm, inputs, n_batches=None, lora_request=None, *args, **kw
             else:
                 n_batches = llm.approx_max_num_seqs
 
-            os.environ["UNSLOTH_VLLM_BATCHES"] = str(n_batches)
+            os.environ["bitsloth_VLLM_BATCHES"] = str(n_batches)
 
             if n_batches != llm.approx_max_num_seqs:
                 print(
-                    f"Unsloth: Will use {n_batches} batches to reduce memory usage for generation!"
+                    f"bitsloth: Will use {n_batches} batches to reduce memory usage for generation!"
                 )
         pass
     pass
@@ -3275,7 +3275,7 @@ pass
 
 
 def _test_same_model(model, new_model, input_ids):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     from transformers.models.llama.modeling_llama import (
         apply_rotary_pos_emb,
         ALL_ATTENTION_FUNCTIONS,
@@ -3431,7 +3431,7 @@ def _test_same_model(model, new_model, input_ids):
             B = new_model.lm_head(B)
             torch.testing.assert_close(A, B)
     except Exception as e:
-        print(f"Unsloth: lm_head test failed. Error: {e}")
+        print(f"bitsloth: lm_head test failed. Error: {e}")
 
     return
 
@@ -3463,7 +3463,7 @@ def test_model_conversion(original_model, new_model):
 
 
 def _test_is_same_vlm(model, new_model, processor, test_backward=False):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     assert model.device == new_model.device
     assert model.dtype == new_model.dtype
 
@@ -3563,14 +3563,14 @@ def _test_is_same_vlm(model, new_model, processor, test_backward=False):
 pass
 
 
-def _read_unsloth_vision_source() -> str:
-    _VISION_TAIL = ("unsloth", "models", "vision.py")
+def _read_bitsloth_vision_source() -> str:
+    _VISION_TAIL = ("bitsloth", "models", "vision.py")
     from importlib.metadata import files, PackageNotFoundError, PackagePath
     from pathlib import Path
 
     # 1) Via installed distribution metadata (no import of the package)
     try:
-        for entry in files("unsloth") or ():
+        for entry in files("bitsloth") or ():
             if isinstance(entry, PackagePath):
                 parts = entry.parts
                 if len(parts) >= 3 and tuple(parts[-3:]) == _VISION_TAIL:
@@ -3584,7 +3584,7 @@ def _read_unsloth_vision_source() -> str:
         if candidate.is_file():
             return candidate.read_text(encoding="utf-8")
     raise FileNotFoundError(
-        "Could not locate unsloth/models/vision.py without importing it"
+        "Could not locate bitsloth/models/vision.py without importing it"
     )
 
 
@@ -3593,9 +3593,9 @@ pass
 
 def get_vllm_supported_vlm(_VAR_NAME="VLLM_SUPPORTED_VLM"):
     """
-    Parse VLLM_SUPPORTED_VLM from unsloth/models/vision.py as a literal.
+    Parse VLLM_SUPPORTED_VLM from bitsloth/models/vision.py as a literal.
     """
-    src = _read_unsloth_vision_source()
+    src = _read_bitsloth_vision_source()
     tree = ast.parse(src)
 
     # Support: `VLLM_SUPPORTED_VLM = [...]` and `VLLM_SUPPORTED_VLM: list[str] = [...]`
@@ -3606,7 +3606,7 @@ def get_vllm_supported_vlm(_VAR_NAME="VLLM_SUPPORTED_VLM"):
         elif isinstance(node, ast.AnnAssign):
             if getattr(node.target, "id", None) == _VAR_NAME:
                 return ast.literal_eval(node.value)
-    raise ValueError(f"{_VAR_NAME} not found as a literal in unsloth/models/vision.py")
+    raise ValueError(f"{_VAR_NAME} not found as a literal in bitsloth/models/vision.py")
 
 
 pass
@@ -3614,18 +3614,18 @@ pass
 
 @torch.inference_mode
 def _test_get_vllm_state_dict(
-    model_name="unsloth/Llama-3.2-3B-Instruct-unsloth-bnb-4bit",
+    model_name="bitsloth/Llama-3.2-3B-Instruct-bitsloth-bnb-4bit",
     dtype=torch.float16,
     gpu_memory_utilization=0.7,
     counts=100,
     conservativeness=1.0,
     float8_kv_cache=False,
-    unsloth_vllm_standby=False,
+    bitsloth_vllm_standby=False,
     load_in_4bit=False,
     skip_generation=False,
     is_vision_model=False,
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Check if model is allowed to be used in vLLM
     gc.collect()
     torch.cuda.empty_cache()
@@ -3643,7 +3643,7 @@ def _test_get_vllm_state_dict(
 
     if not vllm_dynamic_quant_supported(model_name, config):
         raise NotImplementedError(
-            f"Unsloth: Dynamic quant of {model_name} not supported in vLLM"
+            f"bitsloth: Dynamic quant of {model_name} not supported in vLLM"
         )
 
     from transformers import AutoModelForCausalLM, BitsAndBytesConfig
@@ -3679,7 +3679,7 @@ def _test_get_vllm_state_dict(
             model_class = getattr(transformers, config.architectures[0])
         else:
             raise ValueError(
-                f"Unsloth: Model type {model_type} not supported for vision models"
+                f"bitsloth: Model type {model_type} not supported for vision models"
             )
 
     print(f"Loading model with type {model_class}")
@@ -3708,7 +3708,7 @@ def _test_get_vllm_state_dict(
         dtype=dtype,
         conservativeness=conservativeness,
         float8_kv_cache=float8_kv_cache,
-        unsloth_vllm_standby=unsloth_vllm_standby,
+        bitsloth_vllm_standby=bitsloth_vllm_standby,
         use_bitsandbytes=load_in_4bit,
         is_vision_model=is_vision_model,
         enable_lora=enable_lora,
@@ -3846,22 +3846,22 @@ pass
 
 
 def test_get_vllm_state_dict():
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     patch_vllm()
 
     free_memory, total_memory = get_mem_info()
 
     model_names = [
         (
-            "unsloth/Llama-3.2-1B-Instruct-bnb-4bit",
+            "bitsloth/Llama-3.2-1B-Instruct-bnb-4bit",
             100,
         ),
         (
-            "unsloth/Llama-3.2-1B-Instruct-unsloth-bnb-4bit",
+            "bitsloth/Llama-3.2-1B-Instruct-bitsloth-bnb-4bit",
             100,
         ),
         (
-            "unsloth/Llama-3.2-3B-Instruct-unsloth-bnb-4bit",
+            "bitsloth/Llama-3.2-3B-Instruct-bitsloth-bnb-4bit",
             50,
         ),
     ]
@@ -3869,19 +3869,19 @@ def test_get_vllm_state_dict():
     if total_memory >= 40 * 1000 * 1000 * 1000:
         model_names += [
             (
-                "unsloth/Qwen2.5-3B-Instruct",
+                "bitsloth/Qwen2.5-3B-Instruct",
                 50,
             ),
             (
-                "unsloth/Llama-3.2-1B-Instruct-bnb-4bit",
+                "bitsloth/Llama-3.2-1B-Instruct-bnb-4bit",
                 100,
             ),
             (
-                "unsloth/meta-Llama-3.1-8B-Instruct-unsloth-bnb-4bit",
+                "bitsloth/meta-Llama-3.1-8B-Instruct-bitsloth-bnb-4bit",
                 25,
             ),
             (
-                "unsloth/Qwen2.5-7B-Instruct-bnb-4bit",
+                "bitsloth/Qwen2.5-7B-Instruct-bnb-4bit",
                 25,
             ),
         ]
@@ -3913,7 +3913,7 @@ def test_get_vllm_state_dict():
                 counts=counts,
                 conservativeness=conservativeness,
                 float8_kv_cache=float8_kv_cache,
-                unsloth_vllm_standby=unsloth_vllm_standby,
+                bitsloth_vllm_standby=bitsloth_vllm_standby,
             )
         except Exception as error:
             error = str(error)

@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -21,7 +21,7 @@ __all__ = [
     "install_llama_cpp",
     "check_llama_cpp",
     "_download_convert_hf_to_gguf",
-    "UNSLOTH_HOME",
+    "bitsloth_HOME",
     "LLAMA_CPP_DEFAULT_DIR",
     "IS_WINDOWS",
 ]
@@ -109,12 +109,12 @@ IS_WINDOWS = sys.platform == "win32"
 KAGGLE_TMP = "/tmp"
 del keynames
 
-# Default llama.cpp location: ~/.unsloth/llama.cpp
-# Override with UNSLOTH_LLAMA_CPP_PATH env var to use a custom llama.cpp install
-UNSLOTH_HOME = os.path.join(str(Path.home()), ".unsloth")
+# Default llama.cpp location: ~/.bitsloth/llama.cpp
+# Override with bitsloth_LLAMA_CPP_PATH env var to use a custom llama.cpp install
+bitsloth_HOME = os.path.join(str(Path.home()), ".bitsloth")
 LLAMA_CPP_DEFAULT_DIR = os.environ.get(
-    "UNSLOTH_LLAMA_CPP_PATH",
-    os.path.join(UNSLOTH_HOME, "llama.cpp"),
+    "bitsloth_LLAMA_CPP_PATH",
+    os.path.join(bitsloth_HOME, "llama.cpp"),
 )
 
 
@@ -163,7 +163,7 @@ def use_local_gguf():
 pass
 
 def install_package(package, sudo = False, print_output = False, print_outputs = None, system_type = "debian"):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
 
     if IS_WINDOWS:
         # Per-package winget config aligned with setup.ps1
@@ -185,17 +185,17 @@ def install_package(package, sudo = False, print_output = False, print_outputs =
             pkg_lower = pkg.lower()
             entry = WINGET_PACKAGES.get(pkg_lower)
             if entry is None:
-                print(f"Unsloth: Package '{pkg}' not applicable on Windows, skipping.")
+                print(f"bitsloth: Package '{pkg}' not applicable on Windows, skipping.")
                 continue
 
             winget_id, extra_args = entry
             if shutil.which('winget') is None:
                 raise RuntimeError(
-                    f"Unsloth: Missing '{pkg}' and winget not available.\n"
+                    f"bitsloth: Missing '{pkg}' and winget not available.\n"
                     f"Install manually: winget install {winget_id}"
                 )
 
-            print(f"Unsloth: Installing {pkg} via winget ({winget_id})...")
+            print(f"bitsloth: Installing {pkg} via winget ({winget_id})...")
             cmd = [
                 'winget', 'install', '-e', '--id', winget_id,
                 '--source', 'winget',
@@ -206,10 +206,10 @@ def install_package(package, sudo = False, print_output = False, print_outputs =
             result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:
                 raise RuntimeError(
-                    f"Unsloth: Failed to install {winget_id} via winget.\n"
+                    f"bitsloth: Failed to install {winget_id} via winget.\n"
                     f"Install manually: winget install {winget_id}"
                 )
-            if print_output: print(f"Unsloth: Successfully installed {winget_id}", flush=True)
+            if print_output: print(f"bitsloth: Successfully installed {winget_id}", flush=True)
             if print_outputs is not None: print_outputs.append(f"Installed {winget_id}")
         return
 
@@ -222,13 +222,13 @@ def install_package(package, sudo = False, print_output = False, print_outputs =
     else:  # Default to debian/apt-get
         install_cmd = f"{'sudo ' if sudo else ''}apt-get install {package} -y"
 
-    print(f"Unsloth: Installing packages: {package}")
+    print(f"bitsloth: Installing packages: {package}")
     if not (IS_COLAB_ENVIRONMENT or IS_KAGGLE_ENVIRONMENT):
         acceptance = input(f"Missing system packages. We need to execute `{install_cmd}` - do you accept? Press ENTER. Type NO if not.")
         if "no" in str(acceptance).lower():
             raise RuntimeError(
-                f"Unsloth: Execution of `{install_cmd}` was cancelled!\n"\
-                "Please install llama.cpp manually via https://docs.unsloth.ai/basics/troubleshooting-and-faqs#how-do-i-manually-save-to-gguf"
+                f"bitsloth: Execution of `{install_cmd}` was cancelled!\n"\
+                "Please install llama.cpp manually via https://docs.bitsloth.ai/basics/troubleshooting-and-faqs#how-do-i-manually-save-to-gguf"
             )
     with subprocess.Popen(install_cmd, shell = True, stdout = subprocess.PIPE, stderr = subprocess.STDOUT) as sp:
         for line in sp.stdout:
@@ -236,16 +236,16 @@ def install_package(package, sudo = False, print_output = False, print_outputs =
 
             if "Permission denied" in line or "not open lock file" in line or "are you root?" in line or "fatal" in line:
                 sp.terminate()
-                raise RuntimeError(f"[FAIL] Unsloth: Permission denied when installing package {package}\n"\
+                raise RuntimeError(f"[FAIL] bitsloth: Permission denied when installing package {package}\n"\
                                    "This operation requires elevated sudo/root permissions. Please manually install missing packages and retry again"
                     )
             elif line.endswith(COMMANDS_NOT_FOUND):
                 sp.terminate()
                 pkg_mgr_name = {"rpm": "yum/dnf", "arch": "pacman"}.get(system_type, "apt-get")
-                raise RuntimeError(f"[FAIL] Unsloth: {pkg_mgr_name} does not exist when installing {package}? Is this NOT a Linux / Mac based computer?")
+                raise RuntimeError(f"[FAIL] bitsloth: {pkg_mgr_name} does not exist when installing {package}? Is this NOT a Linux / Mac based computer?")
             elif "Unable to locate package" in line:
                 sp.terminate()
-                raise RuntimeError(f"[FAIL] Unsloth: Could not install package {package} since it does not exist.")
+                raise RuntimeError(f"[FAIL] bitsloth: Could not install package {package} since it does not exist.")
             if print_output: print(line, flush = True, end = "")
             if print_outputs is not None: print_outputs.append(line)
         pass
@@ -254,13 +254,13 @@ pass
 
 
 def do_we_need_sudo(system_type="debian"):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     if IS_WINDOWS:
         return False
 
     # Check apt-get updating
     sudo = False
-    print("Unsloth: Updating system package directories")
+    print("bitsloth: Updating system package directories")
 
     # Choose update command based on system type
     if system_type == "rpm":
@@ -282,14 +282,14 @@ def do_we_need_sudo(system_type="debian"):
             elif line.endswith(COMMANDS_NOT_FOUND):
                 sp.terminate()
                 pkg_mgr_name = {"rpm": "yum/dnf", "arch": "pacman"}.get(system_type, "apt-get")
-                raise RuntimeError(f"[FAIL] Unsloth: {pkg_mgr_name} does not exist? Is this NOT a Linux / Mac based computer?")
+                raise RuntimeError(f"[FAIL] bitsloth: {pkg_mgr_name} does not exist? Is this NOT a Linux / Mac based computer?")
             elif "failure resolving" in line or "Err:" in line:
                 sp.terminate()
-                raise RuntimeError("[FAIL] Unsloth: You do not have internet connection!")
+                raise RuntimeError("[FAIL] bitsloth: You do not have internet connection!")
             elif time.time() - start_time >= 180:
                 # Failure if longer than 3 minutes
                 sp.terminate()
-                raise RuntimeError("[FAIL] Unsloth: You do not have internet connection!")
+                raise RuntimeError("[FAIL] bitsloth: You do not have internet connection!")
         pass
     pass
 
@@ -302,24 +302,24 @@ def do_we_need_sudo(system_type="debian"):
             line = line.decode("utf-8", errors = "replace").rstrip()
             if "Permission denied" in line or "not open lock file" in line or "are you root?" in line or "fatal" in line:
                 sp.terminate()
-                raise RuntimeError("[FAIL] Unsloth: Tried with sudo, but still failed?")
+                raise RuntimeError("[FAIL] bitsloth: Tried with sudo, but still failed?")
             elif "failure resolving" in line or "Err:" in line:
                 sp.terminate()
-                raise RuntimeError("[FAIL] Unsloth: You do not have internet connection!")
+                raise RuntimeError("[FAIL] bitsloth: You do not have internet connection!")
             elif time.time() - start_time >= 180:
                 # Failure if longer than 3 minutes
                 sp.terminate()
-                raise RuntimeError("[FAIL] Unsloth: You do not have internet connection!")
+                raise RuntimeError("[FAIL] bitsloth: You do not have internet connection!")
         pass
     pass
 
-    #if sudo: print("Unsloth: All commands will now use admin permissions (sudo)")
+    #if sudo: print("bitsloth: All commands will now use admin permissions (sudo)")
     return sudo
 pass
 
 
 def check_pip():
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     def _is_safe_candidate(pip):
         # Guard against malformed or shell-injected candidates.
         if any(char in pip for char in (";", "|", "&", ">", "<", "`", "$", "\n", "\r")):
@@ -369,12 +369,12 @@ def check_pip():
             continue
         return pip
     pass
-    raise RuntimeError(f"[FAIL] Unsloth: Tried all of `{', '.join(PIP_OPTIONS)}` but failed.")
+    raise RuntimeError(f"[FAIL] bitsloth: Tried all of `{', '.join(PIP_OPTIONS)}` but failed.")
 pass
 
 
 def try_execute(command, sudo = False, print_output = False, print_outputs = None, cwd = None, system_type = "debian", ignore_deprecation = False):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
 
     with subprocess.Popen(command, shell = True, stdout = subprocess.PIPE, stderr = subprocess.STDOUT, cwd = cwd, text=True) as sp:
         stdout, stderr = sp.communicate()
@@ -479,7 +479,7 @@ def _find_lib_path(lib_name):
 
 
 def check_llama_cpp(llama_cpp_folder = LLAMA_CPP_DEFAULT_DIR):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Check if the folder exists
     if not os.path.exists(llama_cpp_folder):
         raise RuntimeError(f"llama.cpp folder '{llama_cpp_folder}' does not exist")
@@ -529,7 +529,7 @@ def check_llama_cpp(llama_cpp_folder = LLAMA_CPP_DEFAULT_DIR):
         for search_dir in search_dirs:
             all_files.extend(glob.glob(os.path.join(search_dir, "*")))
         raise RuntimeError(
-            f"Unsloth: No working quantizer found in {', '.join(search_dirs)}\n"
+            f"bitsloth: No working quantizer found in {', '.join(search_dirs)}\n"
             f"Files found: {', '.join(os.path.basename(f) for f in all_files[:20])}"
         )
     pass
@@ -543,7 +543,7 @@ def check_llama_cpp(llama_cpp_folder = LLAMA_CPP_DEFAULT_DIR):
     pass
 
     if converter_location is None:
-        raise RuntimeError(f"Unsloth: Failed to find converter script in {llama_cpp_folder}")
+        raise RuntimeError(f"bitsloth: Failed to find converter script in {llama_cpp_folder}")
     pass
 
     return quantizer_location, converter_location
@@ -551,11 +551,11 @@ pass
 
 
 def _is_safe_to_delete(path):
-    """Check if a path is safe to delete (must be under UNSLOTH_HOME or be a llama.cpp dir)."""
+    """Check if a path is safe to delete (must be under bitsloth_HOME or be a llama.cpp dir)."""
     try:
         real_path = os.path.realpath(path)
-        real_home = os.path.realpath(UNSLOTH_HOME)
-        # Safe if under ~/.unsloth/
+        real_home = os.path.realpath(bitsloth_HOME)
+        # Safe if under ~/.bitsloth/
         if real_path.startswith(real_home + os.sep):
             return True
         # Safe if it's the CWD-relative llama.cpp (backward-compat path)
@@ -575,7 +575,7 @@ def install_llama_cpp(
     gpu_support = False,
     just_clone_repo = False,
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Installs llama.cpp
     quantizer = None
     converter = None
@@ -585,8 +585,8 @@ def install_llama_cpp(
     needs_clone = False
     needs_build = False
 
-    # Ensure ~/.unsloth/ exists before we try to use it
-    os.makedirs(UNSLOTH_HOME, exist_ok=True)
+    # Ensure ~/.bitsloth/ exists before we try to use it
+    os.makedirs(bitsloth_HOME, exist_ok=True)
 
     # C3: Backward compat -- if using the new default location but CWD has a working ./llama.cpp, use it
     cwd_llama_cpp = os.path.join(os.getcwd(), "llama.cpp")
@@ -598,8 +598,8 @@ def install_llama_cpp(
         try:
             q, c = check_llama_cpp(llama_cpp_folder=cwd_llama_cpp)
             print(
-                f"Unsloth: Found existing llama.cpp at `{cwd_llama_cpp}` -- using it.\n"
-                f"Unsloth: Note: the default location has moved to `{LLAMA_CPP_DEFAULT_DIR}`."
+                f"bitsloth: Found existing llama.cpp at `{cwd_llama_cpp}` -- using it.\n"
+                f"bitsloth: Note: the default location has moved to `{LLAMA_CPP_DEFAULT_DIR}`."
             )
             return q, c
         except Exception:
@@ -609,13 +609,13 @@ def install_llama_cpp(
         # Repo integrity check -- key directories must exist
         required_dirs = ['src', 'ggml', 'common']
         if not all(os.path.isdir(os.path.join(llama_cpp_folder, d)) for d in required_dirs):
-            print("Unsloth: llama.cpp repo appears corrupted (missing src/ggml/common) - will re-clone")
+            print("bitsloth: llama.cpp repo appears corrupted (missing src/ggml/common) - will re-clone")
             # C4: Only delete if the path is safe
             if _is_safe_to_delete(llama_cpp_folder):
                 shutil.rmtree(llama_cpp_folder)
             else:
                 raise RuntimeError(
-                    f"Unsloth: llama.cpp at `{llama_cpp_folder}` appears corrupted but is not in a safe location to delete.\n"
+                    f"bitsloth: llama.cpp at `{llama_cpp_folder}` appears corrupted but is not in a safe location to delete.\n"
                     f"Please manually remove or fix it."
                 )
             needs_clone = True
@@ -625,10 +625,10 @@ def install_llama_cpp(
             try:
                 quantizer, converter = check_llama_cpp(llama_cpp_folder=llama_cpp_folder)
                 # C2: If binaries work, use them directly (no auto-update)
-                print(f"Unsloth: llama.cpp found at `{llama_cpp_folder}` -- using existing install.")
+                print(f"bitsloth: llama.cpp found at `{llama_cpp_folder}` -- using existing install.")
                 return quantizer, converter
             except Exception:
-                print("Unsloth: llama.cpp folder exists but binaries not found - will build")
+                print("bitsloth: llama.cpp folder exists but binaries not found - will build")
                 needs_build = True
     else:
         needs_clone = True
@@ -641,11 +641,11 @@ def install_llama_cpp(
     kwargs = {"sudo" : sudo, "print_output" : print_output, "print_outputs" : print_outputs, "system_type": system_type}
 
     if not missing_packages:
-        if print_output: print("Unsloth: All required system packages already installed!")
+        if print_output: print("bitsloth: All required system packages already installed!")
     else:
         packages_to_install = " ".join(missing_packages)
-        print(f"Unsloth: Missing packages: {packages_to_install}")
-        print(f"Unsloth: Will attempt to install missing system packages.")
+        print(f"bitsloth: Missing packages: {packages_to_install}")
+        print(f"bitsloth: Will attempt to install missing system packages.")
         install_package(packages_to_install, sudo, system_type = system_type)
 
     # Clone repo if needed
@@ -653,7 +653,7 @@ def install_llama_cpp(
         parent_dir = os.path.dirname(llama_cpp_folder)
         if parent_dir:
             os.makedirs(parent_dir, exist_ok=True)
-        print("Unsloth: Cloning llama.cpp repository...")
+        print("bitsloth: Cloning llama.cpp repository...")
         # H2: Quote path to handle spaces in directory names
         quoted_folder = shlex.quote(llama_cpp_folder) if not IS_WINDOWS else f'"{llama_cpp_folder}"'
         try_execute_with_auto_install(
@@ -669,9 +669,9 @@ def install_llama_cpp(
     if just_clone_repo: return llama_cpp_folder
 
     if needs_build:
-        print("Unsloth: Building llama.cpp - please wait 1 to 3 minutes")
+        print("bitsloth: Building llama.cpp - please wait 1 to 3 minutes")
     if gpu_support == "ON":
-        print("Unsloth: Building llama.cpp with GPU support")
+        print("bitsloth: Building llama.cpp with GPU support")
 
     build_success = False
     build_errors = []
@@ -697,7 +697,7 @@ def install_llama_cpp(
 
             if not cmake_generator:
                 raise RuntimeError(
-                    "Unsloth: Visual Studio Build Tools not found.\n"
+                    "bitsloth: Visual Studio Build Tools not found.\n"
                     "Install via: winget install Microsoft.VisualStudio.2022.BuildTools "
                     '--override "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --passive --wait"'
                 )
@@ -722,8 +722,8 @@ def install_llama_cpp(
                 ])
 
             if print_output:
-                print(f"Unsloth: cmake configure with {cmake_generator}")
-                print(f"Unsloth: cmake args: {' '.join(cmake_args)}")
+                print(f"bitsloth: cmake configure with {cmake_generator}")
+                print(f"bitsloth: cmake args: {' '.join(cmake_args)}")
 
             result = subprocess.run(cmake_args, capture_output=True, text=True)
             if result.returncode != 0:
@@ -738,7 +738,7 @@ def install_llama_cpp(
                 f"-j{cpu_count}", "--target",
             ] + list(llama_cpp_targets)
 
-            if print_output: print("Unsloth: Building llama.cpp (this may take several minutes)...")
+            if print_output: print("bitsloth: Building llama.cpp (this may take several minutes)...")
 
             result = subprocess.run(build_cmd, capture_output=True, text=True)
             if result.returncode != 0:
@@ -749,7 +749,7 @@ def install_llama_cpp(
 
             # On Windows, binaries stay in build/bin/Release/ — no copy needed
             build_success = True
-            if print_output: print("Unsloth: Successfully built with cmake (Visual Studio)")
+            if print_output: print("bitsloth: Successfully built with cmake (Visual Studio)")
 
         except Exception as e:
             build_errors.append(f"Windows cmake build failed: {str(e)}")
@@ -826,7 +826,7 @@ def install_llama_cpp(
                 build_errors.append(f"CMake failed: {str(e)}")
 
     if not build_success:
-        error_msg = "=== Unsloth: FAILED building llama.cpp ===\n"
+        error_msg = "=== bitsloth: FAILED building llama.cpp ===\n"
         error_msg += "\n".join(build_errors)
         error_msg += "\n=== Full output log: ===\n"
         error_msg += "".join(print_outputs)
@@ -835,7 +835,7 @@ def install_llama_cpp(
     # Check if it installed correctly
     try:
         quantizer, converter = check_llama_cpp(llama_cpp_folder)
-        print(f"Unsloth: Successfully installed llama.cpp!")
+        print(f"bitsloth: Successfully installed llama.cpp!")
         return quantizer, converter
     except Exception as e:
         raise RuntimeError(
@@ -864,9 +864,9 @@ pass
 
 @lru_cache(1)
 def _download_convert_hf_to_gguf(
-    name = "unsloth_convert_hf_to_gguf",
+    name = "bitsloth_convert_hf_to_gguf",
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Downloads from llama.cpp's Github report
 
     # Ensure llama.cpp directory exists
@@ -882,7 +882,7 @@ def _download_convert_hf_to_gguf(
         original_content = response.content
 
         # 2. Introspect Original Script for Supported Architectures
-        logger.info("Unsloth: Identifying llama.cpp gguf supported architectures...")
+        logger.info("bitsloth: Identifying llama.cpp gguf supported architectures...")
         with tempfile.NamedTemporaryFile(
             mode='wb', suffix=".py", prefix="original_gguf_", dir=LLAMA_CPP_DEFAULT_DIR, delete=False
         ) as temp_file:
@@ -912,12 +912,12 @@ def _download_convert_hf_to_gguf(
 
         if ModelBase is None or ModelType is None:
             logger.warning(
-                f"Unsloth: Failed to find 'ModelBase' or 'ModelType' in the original downloaded script. "
+                f"bitsloth: Failed to find 'ModelBase' or 'ModelType' in the original downloaded script. "
                 f"Structure might have changed. Cannot determine supported architectures."
             )
         elif not hasattr(ModelBase, '_model_classes') or not isinstance(ModelBase._model_classes, dict):
              logger.warning(
-                f"Unsloth: 'ModelBase._model_classes' not found or not a dictionary in original script."
+                f"bitsloth: 'ModelBase._model_classes' not found or not a dictionary in original script."
                  " Cannot determine supported architectures."
             )
         else:
@@ -927,9 +927,9 @@ def _download_convert_hf_to_gguf(
                     text_archs = set(ModelBase._model_classes[ModelType.TEXT].keys())
                     supported_types.update(text_archs)
                 else:
-                    logger.warning("Unsloth: ModelBase._model_classes[ModelType.TEXT] is not a dictionary.")
+                    logger.warning("bitsloth: ModelBase._model_classes[ModelType.TEXT] is not a dictionary.")
             else:
-                logger.info("Unsloth: No TEXT model architectures found registered in the original script.")
+                logger.info("bitsloth: No TEXT model architectures found registered in the original script.")
 
             # Check for VISION models
             if hasattr(ModelType, 'MMPROJ') and ModelType.MMPROJ in ModelBase._model_classes:
@@ -937,9 +937,9 @@ def _download_convert_hf_to_gguf(
                     vision_archs = set(ModelBase._model_classes[ModelType.MMPROJ].keys())
                     supported_types.update(vision_archs)
                 else:
-                    logger.warning("Unsloth: ModelBase._model_classes[ModelType.MMPROJ] is not a dictionary.")
+                    logger.warning("bitsloth: ModelBase._model_classes[ModelType.MMPROJ] is not a dictionary.")
             else:
-                 logger.info("Unsloth: No VISION model architectures found registered in the original script.")
+                 logger.info("bitsloth: No VISION model architectures found registered in the original script.")
         # --- End Architecture Extraction ---
 
         # Convert final set to frozenset for immutability (good practice for cache keys/return values)
@@ -949,7 +949,7 @@ def _download_convert_hf_to_gguf(
 
         if not supported_types:
              logger.warning(
-                f"Unsloth: No supported architectures (TEXT or VISION) could be determined from the original script."
+                f"bitsloth: No supported architectures (TEXT or VISION) could be determined from the original script."
             )
 
         # Cleanup module reference
@@ -957,7 +957,7 @@ def _download_convert_hf_to_gguf(
              del sys.modules[original_module_name]
 
     except Exception as e:
-         logger.error(f"Unsloth: Error during download or introspection of original script: {e}", exc_info=True)
+         logger.error(f"bitsloth: Error during download or introspection of original script: {e}", exc_info=True)
          if temp_original_file_path and os.path.exists(temp_original_file_path):
              try: os.remove(temp_original_file_path)
              except OSError as remove_error: logger.warning(f"Could not remove temp file {temp_original_file_path}: {remove_error}")
@@ -976,7 +976,7 @@ def _download_convert_hf_to_gguf(
         patched_content = original_content # Start patching from original
 
         # 3. Apply Patches (gguf attributes, metadata branding - same logic as before)
-        logger.info("Unsloth: Applying patches...")
+        logger.info("bitsloth: Applying patches...")
         # Patch 1: gguf Attribute Handling
         try:
             archs = list(set(re.findall(rb"[\n\s]gguf\.([\.A-Z\_0-9]{3,})[\n\s\,]", patched_content)))
@@ -984,9 +984,9 @@ def _download_convert_hf_to_gguf(
             if archs:
                 all_edits = "\n".join(f"try: gguf.{x}\nexcept AttributeError: gguf.{x} = None" for x in archs).encode("utf-8")
                 patched_content = re.sub(rb"(import gguf\s*\n)", rb"\1" + all_edits + b"\n\n", patched_content, count=1)
-                if original_content == patched_content and archs: logger.warning("Unsloth: gguf attribute patch did not seem to apply.")
-            else: logger.info("Unsloth: No specific gguf attributes found to patch.")
-        except Exception as e: logger.error(f"Unsloth: Error applying gguf attribute patch: {e}", exc_info=True); raise
+                if original_content == patched_content and archs: logger.warning("bitsloth: gguf attribute patch did not seem to apply.")
+            else: logger.info("bitsloth: No specific gguf attributes found to patch.")
+        except Exception as e: logger.error(f"bitsloth: Error applying gguf attribute patch: {e}", exc_info=True); raise
 
 
 
@@ -996,17 +996,17 @@ def _download_convert_hf_to_gguf(
             new_patched_content = re.sub(
                 rb"(self\.metadata \= gguf\.Metadata\.load\(.+?\))([\n\r]+([\s\t]{4,}))",
                 rb"\1\n"
-                rb"\3if hasattr(self.metadata, 'quantized_by'): self.metadata.quantized_by = 'Unsloth'\n"
-                rb"\3if hasattr(self.metadata, 'repo_url'): self.metadata.repo_url = 'https://huggingface.co/unsloth'\n"
-                rb"\3if hasattr(self.metadata, 'tags'): self.metadata.tags = ['unsloth', 'llama.cpp']\n"
+                rb"\3if hasattr(self.metadata, 'quantized_by'): self.metadata.quantized_by = 'bitsloth'\n"
+                rb"\3if hasattr(self.metadata, 'repo_url'): self.metadata.repo_url = 'https://huggingface.co/bitsloth'\n"
+                rb"\3if hasattr(self.metadata, 'tags'): self.metadata.tags = ['bitsloth', 'llama.cpp']\n"
                 rb"\2",
                 patched_content, count=1, flags=re.MULTILINE
             )
             if new_patched_content != patched_content: patched_content = new_patched_content; metadata_patch_applied = True
             if not metadata_patch_applied:
-                 if re.search(rb"self\.metadata \= gguf\.Metadata\.load\(", patched_content): logger.warning("Unsloth: Metadata branding patch target found, but regex failed to apply.")
-                 else: logger.warning("Unsloth: Metadata branding patch target 'self.metadata = gguf.Metadata.load(...)' not found.")
-        except Exception as e: logger.error(f"Unsloth: Error applying metadata branding patch: {e}", exc_info=True); raise
+                 if re.search(rb"self\.metadata \= gguf\.Metadata\.load\(", patched_content): logger.warning("bitsloth: Metadata branding patch target found, but regex failed to apply.")
+                 else: logger.warning("bitsloth: Metadata branding patch target 'self.metadata = gguf.Metadata.load(...)' not found.")
+        except Exception as e: logger.error(f"bitsloth: Error applying metadata branding patch: {e}", exc_info=True); raise
 
 
         # Patch 3: Qwen2MoE/Qwen3MoE num_experts fix
@@ -1024,23 +1024,23 @@ def _download_convert_hf_to_gguf(
             if num_experts_patch_applied:
                 patched_content = new_patched_content
             else:
-                logger.warning("Unsloth: Qwen2MoE num_experts patch target not found.")
+                logger.warning("bitsloth: Qwen2MoE num_experts patch target not found.")
 
         except Exception as e:
-            logger.error(f"Unsloth: Error applying Qwen2MoE num_experts patch: {e}", exc_info=True)
+            logger.error(f"bitsloth: Error applying Qwen2MoE num_experts patch: {e}", exc_info=True)
             raise
 
 
         # 4. Write Patched File
         patched_filename = os.path.join(LLAMA_CPP_DEFAULT_DIR, f"{name}.py")
-        logger.info(f"Unsloth: Saving patched script to {patched_filename}")
+        logger.info(f"bitsloth: Saving patched script to {patched_filename}")
         with open(patched_filename, "wb") as file:
             file.write(patched_content)
 
         # 5. Parse Flags from Patched Content (same logic as before)
-        logger.info("Unsloth: Parsing arguments from patched script...")
+        logger.info("bitsloth: Parsing arguments from patched script...")
         flags = re.findall(rb"parser\.add_argument\([\s]*[\"\']([^\"\']{1,})[\'\"]", patched_content)
-        if not flags: raise RuntimeError(f"Unsloth: Failed parsing {patched_filename} - no arguments found.")
+        if not flags: raise RuntimeError(f"bitsloth: Failed parsing {patched_filename} - no arguments found.")
         defaults = re.findall(rb"parser\.add_argument\([\s]*[\"\']([^\"\']{1,})[\'\"][^\)]*(?:action=|default=)[\s]*([^,\s\)]+)", patched_content)
         all_flags = {}
         for flag_bytes, default_bytes in defaults:
@@ -1059,22 +1059,22 @@ def _download_convert_hf_to_gguf(
             if flag not in essential_flags: all_flags[flag] = None
         for flag in essential_flags:
              if flag not in all_flags and flag not in rest_flags: logger.warning(f"Essential flag '{flag}' potentially missing."); all_flags[flag] = None
-        logger.info("Unsloth: Successfully processed convert_hf_to_gguf.py.")
+        logger.info("bitsloth: Successfully processed convert_hf_to_gguf.py.")
         # Return path to PATCHED file and combined architectures set
         return patched_filename, text_archs, vision_archs
 
     except requests.exceptions.RequestException as e:
-        raise RuntimeError(f"Unsloth: Network error downloading `{LLAMA_CPP_CONVERT_FILE}`: {e}") from e
+        raise RuntimeError(f"bitsloth: Network error downloading `{LLAMA_CPP_CONVERT_FILE}`: {e}") from e
     except ImportError as e:
-         raise RuntimeError(f"Unsloth: Import error during module loading: {e}") from e
+         raise RuntimeError(f"bitsloth: Import error during module loading: {e}") from e
     except Exception as e:
-        logger.error(f"Unsloth: Unexpected error after introspection: {e}", exc_info=True)
-        raise RuntimeError(f"Unsloth: Failed during patching/parsing of script content: {e}") from e
+        logger.error(f"bitsloth: Unexpected error after introspection: {e}", exc_info=True)
+        raise RuntimeError(f"bitsloth: Failed during patching/parsing of script content: {e}") from e
 pass
 
 
 def _split_str_to_n_bytes(split_str: str) -> int:
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Converts 50G to bytes
     if split_str.endswith("K"):
         n = float(split_str[:-1]) * 1000
@@ -1095,7 +1095,7 @@ pass
 
 
 def _convert_to_gguf(command, output_filename, print_output = False, print_outputs = None):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Filter warnings / errors with dates
     import datetime
     datetime = datetime.datetime.today().strftime("%Y-%m-%d")
@@ -1117,7 +1117,7 @@ def _convert_to_gguf(command, output_filename, print_output = False, print_outpu
     for line in iter(popen.stdout.readline, ""):
         if line.startswith("Writing:"):
             if progress_bar is None:
-                progress_bar = ProgressBar(total = 100, position = 0, leave = True, desc = "Unsloth: GGUF conversion")
+                progress_bar = ProgressBar(total = 100, position = 0, leave = True, desc = "bitsloth: GGUF conversion")
 
             desc = re.findall(r"([\d]{1,3})\%.+?([\d\.].+?\])", line)
             if len(desc) == 1 and len(desc[0]) == 2:
@@ -1172,7 +1172,7 @@ def _convert_to_gguf(command, output_filename, print_output = False, print_outpu
         pass
 
         # Fix up start of strings
-        if line.startswith("INFO:"): line = "Unsloth GGUF:" + line[len("INFO:"):]
+        if line.startswith("INFO:"): line = "bitsloth GGUF:" + line[len("INFO:"):]
 
         if print_output: print(line, flush = True, end = "")
         if print_outputs is not None: print_outputs.append(line)
@@ -1193,32 +1193,32 @@ def _convert_to_gguf(command, output_filename, print_output = False, print_outpu
             ratio = actual_size / total_size
             if ratio <= 0.9 or ratio >= 1.1:
                 raise RuntimeError(
-                    "Unsloth: Failed converting to GGUF since we do not have enough disk space!\n"\
+                    "bitsloth: Failed converting to GGUF since we do not have enough disk space!\n"\
                     f"We need {total_size} bytes but we managed to find only {actual_size} bytes!"
                 )
             pass
 
-            line = f"Unsloth: Converted to {output_filename} with size = {x}\n"
+            line = f"bitsloth: Converted to {output_filename} with size = {x}\n"
             if print_output: print(line, flush = True, end = "")
             if print_outputs is not None: print_outputs.append(line)
         pass
     else:
         raise RuntimeError(
-            "Unsloth: Failed converting to GGUF since we did not create an GGUF files?"
+            "bitsloth: Failed converting to GGUF since we did not create an GGUF files?"
         )
     return list(metadata.keys())
 pass
 
 
 def check_quantization_type(quantization_type = "Q8_0"):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Gets quantization and multiplier
     assert(type(quantization_type) is str)
     quantization_type = quantization_type.lower()
     SUPPORTED_GGUF_TYPES = frozenset(("f32", "f16", "bf16", "q8_0"))
     if quantization_type not in SUPPORTED_GGUF_TYPES:
         raise RuntimeError(
-            f"Unsloth: `{quantization_type}` quantization type is not supported.\n"\
+            f"bitsloth: `{quantization_type}` quantization type is not supported.\n"\
             f"The following quantization types are supported: `{list(SUPPORTED_GGUF_TYPES)}`"
         )
     pass
@@ -1233,13 +1233,13 @@ pass
 
 
 def check_max_shard_size(max_shard_size = "50GB"):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     assert(type(max_shard_size) is str)
     if max_shard_size.endswith("B"): max_shard_size = max_shard_size[:-1]
     try:
         _split_str_to_n_bytes(max_shard_size)
     except:
-        raise TypeError(f"Unsloth: Shard size must be in GB, but `{max_shard_size}` is not")
+        raise TypeError(f"bitsloth: Shard size must be in GB, but `{max_shard_size}` is not")
     return max_shard_size
 pass
 
@@ -1249,7 +1249,7 @@ def convert_to_gguf(
     input_folder,
     model_dtype = "bf16",
     quantization_type = "bf16", # dequantizing from q8_0 disallow, setting default to bf16
-    converter_location = os.path.join(LLAMA_CPP_DEFAULT_DIR, "unsloth_convert_hf_to_gguf.py"),
+    converter_location = os.path.join(LLAMA_CPP_DEFAULT_DIR, "bitsloth_convert_hf_to_gguf.py"),
     supported_text_archs = None,
     supported_vision_archs = None,
     is_vlm = False,
@@ -1258,7 +1258,7 @@ def convert_to_gguf(
     print_output = False,
     print_outputs = None,
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Converts to GGUF using convert_hf_to_gguf.py. Quantization handled by quantize_gguf.
 
     max_shard_size = check_max_shard_size(max_shard_size)
@@ -1266,11 +1266,11 @@ def convert_to_gguf(
         quantization_type, _ = check_quantization_type(quantization_type)
 
     if not os.path.exists(input_folder):
-        raise RuntimeError(f"Unsloth: `{input_folder}` does not exist?")
+        raise RuntimeError(f"bitsloth: `{input_folder}` does not exist?")
 
     config_file = os.path.join(input_folder, "config.json")
     if not os.path.exists(config_file):
-        raise RuntimeError(f"Unsloth: `config.json` does not exist inside `{input_folder}`.")
+        raise RuntimeError(f"bitsloth: `config.json` does not exist inside `{input_folder}`.")
 
     # Load config.json
     with open(config_file, "r", encoding = "utf-8") as config_file:
@@ -1284,7 +1284,7 @@ def convert_to_gguf(
         arch = config_file["architectures"][0]
         if arch not in supported_types:
             raise NotImplementedError(
-                f"Unsloth: llama.cpp GGUF conversion does not yet support "\
+                f"bitsloth: llama.cpp GGUF conversion does not yet support "\
                 f"converting model types of `{arch}`."
             )
     pass
@@ -1293,7 +1293,7 @@ def convert_to_gguf(
         arch = config_file["architectures"][0]
         if arch not in supported_vision_archs:
                 is_vlm = False
-                print(f"Unsloth: {arch} is not supported for MMPROJ conversion. Converting as text-only model.")
+                print(f"bitsloth: {arch} is not supported for MMPROJ conversion. Converting as text-only model.")
 
     all_output_files = []
     runs_to_do = []
@@ -1366,7 +1366,7 @@ def convert_to_gguf(
 
     # Execute conversions
     for args, output_file, description in runs_to_do:
-        if print_output: print(f"\nUnsloth: Converting {description}...")
+        if print_output: print(f"\nbitsloth: Converting {description}...")
         command = [sys.executable, converter_location]
         for key, value in args.items():
             # Keep flag-only options (eg `--mmproj`) as standalone args.
@@ -1387,7 +1387,7 @@ def convert_to_gguf(
             if print_output and hasattr(e, 'stdout') and e.stdout:
                 print(e.stdout)
             cmd = " ".join(str(x) for x in command)
-            raise RuntimeError(f"Unsloth: Failed to convert {description} to GGUF with command `{cmd}`: {e}")
+            raise RuntimeError(f"bitsloth: Failed to convert {description} to GGUF with command `{cmd}`: {e}")
 
         # Simple validation using native Python - check for main file or sharded files
         if os.path.exists(output_file):
@@ -1408,7 +1408,7 @@ def convert_to_gguf(
 
             if not shard_files:
                 raise RuntimeError(
-                    f"Unsloth: Failed to convert {description} - "
+                    f"bitsloth: Failed to convert {description} - "
                     f"output file {output_file} not created"
                 )
 
@@ -1441,9 +1441,9 @@ def convert_to_gguf(
             else:
                 size_str = f"{file_size_bytes / 1024:.1f}K"
             if len(found_files) == 1:
-                print(f"Unsloth: Successfully saved {description} GGUF to: {found_files[0]} (size: {size_str})")
+                print(f"bitsloth: Successfully saved {description} GGUF to: {found_files[0]} (size: {size_str})")
             else:
-                print(f"Unsloth: Successfully saved {description} GGUF as {len(found_files)} shards (total size: {size_str})")
+                print(f"bitsloth: Successfully saved {description} GGUF as {len(found_files)} shards (total size: {size_str})")
 
     return all_output_files, is_vlm
 pass
@@ -1457,7 +1457,7 @@ def quantize_gguf(
     n_threads = None,
     print_output = True,
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Use llama-quantize for fast quantization of GGUF files.
 
     # Fix default path on Windows: binaries are in build/bin/Release/
@@ -1486,7 +1486,7 @@ def quantize_gguf(
     command = f"{_quote(quantizer_location)} {_quote(input_gguf)} {_quote(output_gguf)} {quant_type} {n_threads}"
 
     if print_output:
-        print(f"Unsloth: Quantizing to {quant_type}...")
+        print(f"bitsloth: Quantizing to {quant_type}...")
 
     try:
         if print_output:
@@ -1509,25 +1509,25 @@ def quantize_gguf(
     if print_output:
         file_size_bytes = output_path.stat().st_size
         file_size_gb = file_size_bytes / (1024**3)
-        print(f"Unsloth: Successfully quantized to {output_gguf} (size: {file_size_gb:.2f}GB)")
+        print(f"bitsloth: Successfully quantized to {output_gguf} (size: {file_size_gb:.2f}GB)")
     return output_gguf
 pass
 
 
 def _assert_correct_gguf(model_name, model, tokenizer):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Verify if conversion is in fact correct by checking tokenizer and last tensor
     import gguf.gguf_reader  # type: ignore
     from gguf.gguf_reader import GGUFReader  # type: ignore
 
     # Stop until building tensors
     if not hasattr(GGUFReader, "__init__"):
-        raise RuntimeError("Unsloth: Failed to verify GGUF: GGUFReader has no __init__")
+        raise RuntimeError("bitsloth: Failed to verify GGUF: GGUFReader has no __init__")
     init_source = inspect.getsource(GGUFReader.__init__)
     text = "self._build_tensors(offs, tensors_fields"
     stop = init_source.find(text)
     if text not in init_source:
-        raise RuntimeError(f"Unsloth: Failed to verify GGUF: Reader has no `{text}`")
+        raise RuntimeError(f"bitsloth: Failed to verify GGUF: Reader has no `{text}`")
     init_source = init_source.replace(text, text + "[-1:]")
 
     # Execute source and run partial GGUF reader
@@ -1551,7 +1551,7 @@ def _assert_correct_gguf(model_name, model, tokenizer):
 
         vocab = [k for k, v in sorted(vocab.items(), key = lambda item: item[1])]
         if saved_vocab != vocab:
-            raise RuntimeError("Unsloth: Failed converting to GGUF due to corrupted tokenizer.")
+            raise RuntimeError("bitsloth: Failed converting to GGUF due to corrupted tokenizer.")
     pass
 
     # Get last tensor in file and check for exactness
@@ -1575,7 +1575,7 @@ def _assert_correct_gguf(model_name, model, tokenizer):
         if found:
             torch._assert(
                 distances.min() == 0,
-                "Unsloth: Failed converting to GGUF due to corrupted files."
+                "bitsloth: Failed converting to GGUF due to corrupted files."
             )
         pass
     pass
@@ -1605,7 +1605,7 @@ pass
 
 
 def assert_correct_gguf(model_name, model, tokenizer):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Verify if conversion is in fact correct by checking tokenizer and last tensor
     if type(model_name) not in (list, tuple,):
         model_name = [model_name,]
@@ -1767,7 +1767,7 @@ pass
 @lru_cache(1)
 def _check_llama_cpp_appended_system_message():
     # See https://github.com/ggml-org/llama.cpp/issues/18323
-    # See https://docs.unsloth.ai/basics/inference-and-deployment/llama-server-and-openai-endpoint#llama-server-quirks
+    # See https://docs.bitsloth.ai/basics/inference-and-deployment/llama-server-and-openai-endpoint#llama-server-quirks
     llama_cpp_chat_file = "https://raw.githubusercontent.com/ggml-org/llama.cpp/refs/heads/master/common/chat.cpp"
     llama_cpp_appended = '''Respond in JSON format, either with `tool_call` (a request to call tools) or with `response` reply to the user's request'''
     check = requests.get(llama_cpp_chat_file, timeout = 5)
@@ -1784,7 +1784,7 @@ def _check_llama_cpp_appended_system_message():
 
 def add_llama_cpp_system_message(messages, tools, inplace = False):
     # See https://github.com/ggml-org/llama.cpp/issues/18323
-    # See https://docs.unsloth.ai/basics/inference-and-deployment/llama-server-and-openai-endpoint#llama-server-quirks
+    # See https://docs.bitsloth.ai/basics/inference-and-deployment/llama-server-and-openai-endpoint#llama-server-quirks
     extra = _check_llama_cpp_appended_system_message()
     if len(messages) == 0 or messages is None:
         return messages
@@ -1805,8 +1805,8 @@ def add_llama_cpp_system_message(messages, tools, inplace = False):
             messages = [{"role" : "system", "content" : extra}] + messages
     return messages
 
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by

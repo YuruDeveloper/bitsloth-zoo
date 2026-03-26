@@ -1,4 +1,4 @@
-# Copyright 2023-present Daniel Han-Chen & the Unsloth team. All rights reserved.
+# Copyright 2023-present Daniel Han-Chen & the bitsloth team. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ def _pytorch_rocm_index_exists(rocm_index):
         try:
             request = urllib.request.Request(
                 index_url,
-                headers = {"User-Agent" : "unsloth-zoo"},
+                headers = {"User-Agent" : "bitsloth-zoo"},
                 method = method,
             )
             with urllib.request.urlopen(request, timeout = 2.5) as response:
@@ -91,7 +91,7 @@ def _available_pytorch_rocm_indices():
     try:
         request = urllib.request.Request(
             f"{_PYTORCH_WHL_BASE_URL}/",
-            headers = {"User-Agent" : "unsloth-zoo"},
+            headers = {"User-Agent" : "bitsloth-zoo"},
         )
         with urllib.request.urlopen(request, timeout = 2.5) as response:
             html = response.read().decode("utf-8", errors = "ignore")
@@ -176,7 +176,7 @@ def _amd_installation_hint():
     index_is_valid = _pytorch_rocm_index_exists(chosen_index)
 
     lines = [
-        "Unsloth detected signs of an AMD ROCm GPU, but your current PyTorch build has no usable HIP accelerator.",
+        "bitsloth detected signs of an AMD ROCm GPU, but your current PyTorch build has no usable HIP accelerator.",
         "This usually means torch/torchvision/torchaudio were installed from default PyPI wheels instead of ROCm wheels.",
     ]
     if detected_major_minor is not None:
@@ -215,18 +215,18 @@ def get_device_type():
             amd_hint = _amd_installation_hint()
             if amd_hint is not None:
                 raise NotImplementedError(amd_hint)
-            raise NotImplementedError("Unsloth cannot find any torch accelerator? You need a GPU.")
+            raise NotImplementedError("bitsloth cannot find any torch accelerator? You need a GPU.")
         accelerator = str(torch.accelerator.current_accelerator())
         if accelerator in ("cuda", "xpu", "hip"):
             raise RuntimeError(
-                f"Unsloth: Weirdly `torch.cuda.is_available()`, `torch.xpu.is_available()` and `is_hip` all failed.\n"\
+                f"bitsloth: Weirdly `torch.cuda.is_available()`, `torch.xpu.is_available()` and `is_hip` all failed.\n"\
                 f"But `torch.accelerator.current_accelerator()` works with it being = `{accelerator}`\n"\
                 f"Please reinstall torch - it's most likely broken :("
             )
     amd_hint = _amd_installation_hint()
     if amd_hint is not None:
         raise NotImplementedError(amd_hint)
-    raise NotImplementedError("Unsloth currently only works on NVIDIA, AMD and Intel GPUs.")
+    raise NotImplementedError("bitsloth currently only works on NVIDIA, AMD and Intel GPUs.")
 pass
 DEVICE_TYPE : str = get_device_type()
 # HIP fails for autocast and other torch functions. Use CUDA instead

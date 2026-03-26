@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -18,7 +18,7 @@ import torch
 
 def test_fused_ce_loss(
     compute_fused_ce_loss,
-    unsloth_fused_ce_loss,
+    bitsloth_fused_ce_loss,
     bszs = [1, 2, 1, 2,],
     qlens = [123, 323, 123, 323,],
     hds = [513, 1023, 877, 1111,],
@@ -86,7 +86,7 @@ def test_fused_ce_loss(
             old_lm_bias_grad = lm_head_bias.grad.detach().clone()
             del lm_head_bias.grad
 
-        new_loss = unsloth_fused_ce_loss(
+        new_loss = bitsloth_fused_ce_loss(
             None,
             hidden_states = hidden_states,
             lm_head_weight = lm_head_weight,
@@ -114,8 +114,8 @@ def test_fused_ce_loss(
     pass
 pass
 
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published

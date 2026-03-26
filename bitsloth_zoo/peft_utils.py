@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -59,14 +59,14 @@ def get_peft_regex(
     """
     Create a regex pattern to apply LoRA to only select layers of a model.
     """
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     if not finetune_vision_layers and not finetune_language_layers:
         raise RuntimeError(
-            "Unsloth: No layers to finetune - please select to finetune the vision and/or the language layers!"
+            "bitsloth: No layers to finetune - please select to finetune the vision and/or the language layers!"
         )
     if not finetune_attention_modules and not finetune_mlp_modules:
         raise RuntimeError(
-            "Unsloth: No modules to finetune - please select to finetune the attention and/or the mlp modules!"
+            "bitsloth: No modules to finetune - please select to finetune the attention and/or the mlp modules!"
         )
     pass
 
@@ -127,11 +127,11 @@ def get_peft_regex(
     check = any(re.search(regex_matcher, name, flags = re.DOTALL) for name in linear_modules)
     if not check and target_modules is not None:
         raise RuntimeError(
-            f"Unsloth: No layers to finetune? You most likely specified target_modules = {target_modules} incorrectly!"
+            f"bitsloth: No layers to finetune? You most likely specified target_modules = {target_modules} incorrectly!"
         )
     elif not check:
         raise RuntimeError(
-            f"Unsloth: No layers to finetune for {model.config._name_or_path}. Please file a bug report!"
+            f"bitsloth: No layers to finetune for {model.config._name_or_path}. Please file a bug report!"
         )
     pass
     return regex_matcher
@@ -139,7 +139,7 @@ pass
 
 
 def get_lora_layer_modules():
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     import peft.tuners.lora
     path = os.path.split(peft.tuners.lora.__file__)[0]
     files = os.listdir(path)
@@ -160,7 +160,7 @@ pass
 
 
 def requires_grad_for_gradient_checkpointing(model):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Enables requires_grad to make gradient checkpointing work on
     # non language models that don't just use .embed_tokens
     def register_other_hooks(name1, name2, module, _hooks):
@@ -209,7 +209,7 @@ def requires_grad_for_gradient_checkpointing(model):
                 else:
                     raise ValueError("Neither loss nor logits are available for grad post hook.")
             except Exception as e:
-                raise RuntimeError(f"Unsloth: Failed to make output require gradients: {e}")
+                raise RuntimeError(f"bitsloth: Failed to make output require gradients: {e}")
     pass
 
     def requires_grad_pre_hook(module, args, kwargs):
@@ -252,7 +252,7 @@ def requires_grad_for_gradient_checkpointing(model):
     name_components = name.split(".")
 
     if len(name_components) == 0:
-        raise RuntimeError("Unsloth: Model has 0 layers?")
+        raise RuntimeError("bitsloth: Model has 0 layers?")
 
     final_where = None
     # Try getting previous parent module
@@ -308,7 +308,7 @@ def requires_grad_for_gradient_checkpointing(model):
             old_module = module
         module = old_module
     pass
-    print(f"Unsloth: Making `{module_name}` require gradients")
+    print(f"bitsloth: Making `{module_name}` require gradients")
 
     still_need_patching = True
     # Check if input_embeddings exists
@@ -342,8 +342,8 @@ def requires_grad_for_gradient_checkpointing(model):
     pass
 pass
 
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by

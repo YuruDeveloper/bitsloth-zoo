@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -15,7 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 __all__ = [
-    "unsloth_fused_ce_loss",
+    "bitsloth_fused_ce_loss",
     "apply_autograd_function",
     "compute_fused_ce_loss",
 ]
@@ -34,8 +34,8 @@ from ..temporary_patches.common import (
 from ..device_type import DEVICE_TYPE
 
 
-TARGET_GB = os.environ.get("UNSLOTH_CE_LOSS_TARGET_GB", None)
-N_CHUNKS = os.environ.get("UNSLOTH_CE_LOSS_N_CHUNKS", None)
+TARGET_GB = os.environ.get("bitsloth_CE_LOSS_TARGET_GB", None)
+N_CHUNKS = os.environ.get("bitsloth_CE_LOSS_N_CHUNKS", None)
 
 # Register grad_and_value_impl in trace_rules as defense-in-depth.
 # grad_impl is registered but grad_and_value_impl is not, which can cause
@@ -55,7 +55,7 @@ except Exception:
 
 # Module-level flag: None = untested, True = works, False = skip compile.
 _FUSED_CE_COMPILE_SUPPORTED = (
-    None if os.environ.get("UNSLOTH_FUSED_CE_COMPILE_DISABLE", "0") != "1" else False
+    None if os.environ.get("bitsloth_FUSED_CE_COMPILE_DISABLE", "0") != "1" else False
 )
 
 
@@ -170,7 +170,7 @@ def _get_chunk_multiplier(vocab_size, target_gb=None):
     # Prevent ZeroDivisionError when GPU memory is exhausted
     if target_gb <= 1e-9:  # Use a small epsilon for float comparison
         raise RuntimeError(
-            "Unsloth: No or negligible GPU memory available for fused cross entropy."
+            "bitsloth: No or negligible GPU memory available for fused cross entropy."
         )
 
     multiplier = (vocab_size * 4 / 1024 / 1024 / 1024) / (target_gb)
@@ -193,7 +193,7 @@ def get_chunk_size(bsz, qlen, vocab_size, target_gb=None):
 pass
 
 
-class UnslothFusedLoss(torch.autograd.Function):
+class bitslothFusedLoss(torch.autograd.Function):
     @staticmethod
     def forward(
         ctx,
@@ -554,7 +554,7 @@ class UnslothFusedLoss(torch.autograd.Function):
 pass
 
 
-def unsloth_fused_ce_loss(
+def bitsloth_fused_ce_loss(
     trainer,
     hidden_states: torch.Tensor,
     lm_head_weight: torch.Tensor,
@@ -589,7 +589,7 @@ def unsloth_fused_ce_loss(
     elif N_CHUNKS:
         kwargs["n_chunks"] = max(int(N_CHUNKS), 1)
     return apply_autograd_function(
-        UnslothFusedLoss,
+        bitslothFusedLoss,
         dict(
             loss_function=compute_fused_ce_loss,
             hidden_states=hidden_states,
@@ -610,8 +610,8 @@ def unsloth_fused_ce_loss(
 
 pass
 
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published

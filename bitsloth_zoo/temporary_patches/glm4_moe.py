@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -87,7 +87,7 @@ def patch_glm4_moe():
 
         return first_weight, second_weight, scaling, num_experts
 
-    Glm4MoeLiteNaiveMoe._unsloth_lora_extractor_fn = staticmethod(_glm4_lora_extractor)
+    Glm4MoeLiteNaiveMoe._bitsloth_lora_extractor_fn = staticmethod(_glm4_lora_extractor)
 
     # 1. Patch Glm4MoeLiteNaiveMoe (The Expert Layer)
     # This delegates to moe_utils which handles the Split LoRA logic
@@ -130,7 +130,7 @@ def patch_glm4_moe():
     patch_function(Glm4MoeLiteMoE, "forward", moe_block_forward)
 
     if BITSLOTH_ENABLE_LOGGING:
-        logger.info("Unsloth: Patched GLM4 MoE for Split LoRA support.")
+        logger.info("bitsloth: Patched GLM4 MoE for Split LoRA support.")
 
 
 # Register the patch

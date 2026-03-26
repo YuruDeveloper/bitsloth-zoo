@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -34,19 +34,19 @@ from .hf_utils import dtype_from_config, set_dtype_in_config, HAS_TORCH_DTYPE
 
 # Also disable compiling on bitsandbytes
 def patch_compiling_bitsandbytes():
-    # All Unsloth Zoo code licensed under LGPLv3
-    os.environ["UNSLOTH_PATCHED"] = "1"
+    # All bitsloth Zoo code licensed under LGPLv3
+    os.environ["bitsloth_PATCHED"] = "1"
 
     import bitsandbytes
 
     if Version(bitsandbytes.__version__) >= Version("0.46.0"):
         if os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1":
-            print("Unsloth: Bitsandbytes >= 0.46.0 supports torch.compile - enabling.")
+            print("bitsloth: Bitsandbytes >= 0.46.0 supports torch.compile - enabling.")
     else:
         # Disable dynamo on Linear4bit, Linear8bit and other future modules
         if os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1":
             print(
-                "Unsloth: Bitsandbytes < 0.46.0 does not support torch.compile - disabling."
+                "bitsloth: Bitsandbytes < 0.46.0 does not support torch.compile - disabling."
             )
         for x in [
             "bitsandbytes.nn.modules",
@@ -83,15 +83,15 @@ pass
 
 
 def patch_layernorm(fast_layernorm):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     import torch.nn
 
-    if torch.nn.LayerNorm.__name__ != "Unsloth_LayerNorm":
-        os.environ["UNSLOTH_PATCHED"] = "1"
+    if torch.nn.LayerNorm.__name__ != "bitsloth_LayerNorm":
+        os.environ["bitsloth_PATCHED"] = "1"
 
         from torch.nn import LayerNorm
 
-        class Unsloth_LayerNorm(LayerNorm):
+        class bitsloth_LayerNorm(LayerNorm):
             def forward(self, X):
                 return fast_layernorm(self, X)
 
@@ -99,7 +99,7 @@ def patch_layernorm(fast_layernorm):
 
         pass
 
-        torch.nn.LayerNorm = Unsloth_LayerNorm
+        torch.nn.LayerNorm = bitsloth_LayerNorm
     return
 
 
@@ -107,7 +107,7 @@ pass
 
 
 def patch_torch_compile(debug=False, O3=False, ignore_errors=True):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     assert type(debug) is bool
     assert type(O3) is bool
     import os, logging
@@ -141,15 +141,15 @@ def patch_torch_compile(debug=False, O3=False, ignore_errors=True):
     pass
     try:
         print(
-            f"🦥 Unsloth Zoo will now patch everything{DEBUGGING} to make training faster!"
+            f"🦥 bitsloth Zoo will now patch everything{DEBUGGING} to make training faster!"
         )
     except:
         print(
-            f"Unsloth Zoo will now patch everything{DEBUGGING} to make training faster!"
+            f"bitsloth Zoo will now patch everything{DEBUGGING} to make training faster!"
         )
     pass
 
-    os.environ["UNSLOTH_PATCHED"] = "1"
+    os.environ["bitsloth_PATCHED"] = "1"
     # See https://pytorch.org/tutorials/recipes/torch_compile_caching_tutorial.html
     # Caches kernel generations for faster restarts
     # https://dev-discuss.pytorch.org/t/impact-of-multithreading-and-local-caching-on-torch-compile/2498/3
@@ -277,7 +277,7 @@ def verify_and_set_device(
     set_of_devices = set(x.device for x in module.parameters())
     if len(set_of_devices) > 1:
         raise ValueError(
-            f"Unsloth: All parameters of {module} should be on the same device"
+            f"bitsloth: All parameters of {module} should be on the same device"
         )
     device = set_of_devices.pop()
     module._per_layer_device_index = device.index
@@ -311,13 +311,13 @@ def patch_to_dict():
         result = original_to_diff_dict(self, *args, **kwargs)
         return _normalize_dict_dtypes(result)
 
-    wrapped_to_diff_dict._unsloth_patched = True
-    if not getattr(PretrainedConfig, "_unsloth_patched", False):
+    wrapped_to_diff_dict._bitsloth_patched = True
+    if not getattr(PretrainedConfig, "_bitsloth_patched", False):
         setattr(PretrainedConfig, "to_diff_dict", wrapped_to_diff_dict)
     pass
 
-    wrapped_to_dict._unsloth_patched = True
-    if not getattr(PretrainedConfig, "_unsloth_patched", False):
+    wrapped_to_dict._bitsloth_patched = True
+    if not getattr(PretrainedConfig, "_bitsloth_patched", False):
         setattr(PretrainedConfig, "to_dict", wrapped_to_dict)
 
 
@@ -332,7 +332,7 @@ def patch_model_and_tokenizer(
     do_forced_float32=False,
     correct_dtype=None,
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     assert type(downcast_rope) is bool
     import gc
 
@@ -366,12 +366,12 @@ def patch_model_and_tokenizer(
         from bitsandbytes.nn import Linear4bit as Bnb_Linear4bit
     except:
         raise ImportError(
-            "Unsloth: Please install bitsandbytes via `pip install bitsandbytes`"
+            "bitsloth: Please install bitsandbytes via `pip install bitsandbytes`"
         )
     try:
         from peft.tuners.lora import Linear4bit as Peft_Linear4bit
     except:
-        raise ImportError("Unsloth: Please install peft via `pip install peft`")
+        raise ImportError("bitsloth: Please install peft via `pip install peft`")
     pass
 
     # Get most likely the correct data-type of the model
@@ -479,7 +479,7 @@ def patch_model_and_tokenizer(
     for name, module in model.named_modules():
         if isinstance(module, (Bnb_Linear4bit, Peft_Linear4bit)):
             weight = module.weight
-            # Check if quant_state exists for vision models like unsloth/Llama-3.2-11B-Vision-Instruct-bnb-4bit, unsloth/granite-vision-3.2-2b
+            # Check if quant_state exists for vision models like bitsloth/Llama-3.2-11B-Vision-Instruct-bnb-4bit, bitsloth/granite-vision-3.2-2b
             if not hasattr(weight, "quant_state"):
                 print(f"Skipping {name}: no quant_state found")
                 continue
@@ -561,12 +561,12 @@ def patch_model_and_tokenizer(
         while hasattr(current_model, "model") and hasattr(current_model, "config"):
             if hasattr(current_model.config, "vocab_size"):
                 current_model.config.update({"vocab_size": len(tokenizer)})
-            current_model.config.update({"unsloth_optimized": True})
+            current_model.config.update({"bitsloth_optimized": True})
             current_model = current_model.model
         if hasattr(current_model, "model") and hasattr(current_model, "config"):
             if hasattr(current_model.config, "vocab_size"):
                 current_model.config.update({"vocab_size": len(tokenizer)})
-            current_model.config.update({"unsloth_optimized": True})
+            current_model.config.update({"bitsloth_optimized": True})
         pass
     pass
 
@@ -620,14 +620,14 @@ pass
 def patch_compiled_autograd():
     # Fixes double compilation of functions during gradient checkpointing
     # See https://github.com/pytorch/pytorch/issues/135298
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     import inspect, re
 
     # From https://github.com/pytorch/pytorch/pull/135795/files
     import torch._dynamo.compiled_autograd
 
     fx = torch._dynamo.compiled_autograd.AutogradCompilerInstance.end_capture
-    if fx.__name__ == "unsloth_end_capture":
+    if fx.__name__ == "bitsloth_end_capture":
         return
     source = inspect.getsource(fx)
     if "with disable()" in source:
@@ -639,7 +639,7 @@ def patch_compiled_autograd():
     match = re.search(r"\n([ ]{1,})return compiled_fn", source)
     n = len(match.group(1)) if match else 0
     source = source.replace(old, f"with disable():\n{' ' * (n + 4)}{old}")
-    source = source.replace("def end_capture", "def unsloth_end_capture", 1)
+    source = source.replace("def end_capture", "def bitsloth_end_capture", 1)
 
     # Import items to make the function executable
     all_items = dir(torch._dynamo.compiled_autograd)
@@ -652,7 +652,7 @@ def patch_compiled_autograd():
     )
     exec(source, globals())
     torch._dynamo.compiled_autograd.AutogradCompilerInstance.end_capture = (
-        unsloth_end_capture
+        bitsloth_end_capture
     )
 
     # From https://github.com/pytorch/pytorch/pull/135795/files
@@ -662,7 +662,7 @@ def patch_compiled_autograd():
         fx = torch._dynamo.variables.misc.AutogradEngineVariable.call_method
     except:
         return
-    if fx.__name__ == "unsloth_call_method":
+    if fx.__name__ == "bitsloth_call_method":
         return
     source = inspect.getsource(fx)
     if "in_compiled_autograd_region" in source:
@@ -675,7 +675,7 @@ def patch_compiled_autograd():
         "torch._dynamo.compiled_autograd.in_compiled_autograd_region",
         1,
     )
-    source = source.replace("def call_method", "def unsloth_call_method", 1)
+    source = source.replace("def call_method", "def bitsloth_call_method", 1)
 
     # Import items to make the function executable
     all_items = dir(torch._dynamo.variables.misc)
@@ -688,7 +688,7 @@ def patch_compiled_autograd():
     )
     exec(source, globals())
     torch._dynamo.variables.misc.AutogradEngineVariable.call_method = (
-        unsloth_call_method
+        bitsloth_call_method
     )
     return
 
@@ -738,7 +738,7 @@ def check_conversion_mappings(model, current_key_name_str, skip_modules):
                 # skip this pattern but log
                 do_logging = os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1"
                 if do_logging:
-                    print(f"Unsloth: Replace bnb issue: {str(e)}")
+                    print(f"bitsloth: Replace bnb issue: {str(e)}")
                 break
         return any(
             [
@@ -808,9 +808,9 @@ import transformers.integrations.bitsandbytes
 
 if hasattr(transformers.integrations.bitsandbytes, "_replace_with_bnb_linear") and (
     transformers.integrations.bitsandbytes._replace_with_bnb_linear.__name__
-    != "_unsloth_replace_with_bnb_linear"
+    != "_bitsloth_replace_with_bnb_linear"
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     source = inspect.getsource(
         transformers.integrations.bitsandbytes._replace_with_bnb_linear
     )
@@ -825,7 +825,7 @@ if hasattr(transformers.integrations.bitsandbytes, "_replace_with_bnb_linear") a
     exec(f"from transformers.integrations.bitsandbytes import ({x})", globals())
     if "current_key_name_str" not in source:
         raise RuntimeError(
-            "Unsloth: Patch for dynamic quantization failed since current_key_name_str does not exist."
+            "bitsloth: Patch for dynamic quantization failed since current_key_name_str does not exist."
         )
 
     # First patch recursive calls to mark the parent class
@@ -849,7 +849,7 @@ if hasattr(transformers.integrations.bitsandbytes, "_replace_with_bnb_linear") a
             do_logging = os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1"
             if do_logging:
                 print(
-                    f"Unsloth: Could not wrap replace_with_bnb_linear but may not be an issue"
+                    f"bitsloth: Could not wrap replace_with_bnb_linear but may not be an issue"
                 )
             mark_parent_error = True
         else:
@@ -859,7 +859,7 @@ if hasattr(transformers.integrations.bitsandbytes, "_replace_with_bnb_linear") a
         do_logging = os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1"
         if do_logging:
             print(
-                f"Unsloth: Could not wrap replace_with_bnb_linear but may not be an issue. {str(e)}"
+                f"bitsloth: Could not wrap replace_with_bnb_linear but may not be an issue. {str(e)}"
             )
         mark_parent_error = True
 
@@ -873,7 +873,7 @@ if hasattr(transformers.integrations.bitsandbytes, "_replace_with_bnb_linear") a
 
     source = source.replace(
         "_replace_with_bnb_linear",
-        "_unsloth_replace_with_bnb_linear",
+        "_bitsloth_replace_with_bnb_linear",
     )
 
     score_code = """if name == 'score':
@@ -895,7 +895,7 @@ if hasattr(transformers.integrations.bitsandbytes, "_replace_with_bnb_linear") a
 
     exec(source, globals())
     transformers.integrations.bitsandbytes._replace_with_bnb_linear = (
-        _unsloth_replace_with_bnb_linear
+        _bitsloth_replace_with_bnb_linear
     )
 pass
 
@@ -903,7 +903,7 @@ pass
 # and endswith, but does not do substring component matching. This means entries like
 # "vision_tower" in llm_int8_skip_modules fail to match module names like
 # "model.vision_tower.vision_model.encoder.layers.0.self_attn.q_proj".
-# On 4.x, Unsloth patches _replace_with_bnb_linear with check_conversion_mappings
+# On 4.x, bitsloth patches _replace_with_bnb_linear with check_conversion_mappings
 # (substring matching). On 5.x, _replace_with_bnb_linear doesn't exist, so we
 # patch should_convert_module instead.
 import transformers.quantizers.quantizers_utils as _quantizers_utils
@@ -912,11 +912,11 @@ if (
     not hasattr(transformers.integrations.bitsandbytes, "_replace_with_bnb_linear")
     and hasattr(_quantizers_utils, "should_convert_module")
     and getattr(_quantizers_utils.should_convert_module, "__name__", "")
-    != "_unsloth_should_convert_module"
+    != "_bitsloth_should_convert_module"
 ):
     _original_should_convert_module = _quantizers_utils.should_convert_module
 
-    def _unsloth_should_convert_module(full_name, patterns=None):
+    def _bitsloth_should_convert_module(full_name, patterns=None):
         if patterns is None:
             return True
         should_not_convert = any(
@@ -928,16 +928,16 @@ if (
         )
         return not should_not_convert
 
-    _quantizers_utils.should_convert_module = _unsloth_should_convert_module
+    _quantizers_utils.should_convert_module = _bitsloth_should_convert_module
     # Also patch the imported reference in bitsandbytes module
     if hasattr(transformers.integrations.bitsandbytes, "should_convert_module"):
         transformers.integrations.bitsandbytes.should_convert_module = (
-            _unsloth_should_convert_module
+            _bitsloth_should_convert_module
         )
 pass
 
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by

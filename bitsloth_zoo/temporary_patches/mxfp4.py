@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -25,9 +25,9 @@ from .common import TEMPORARY_PATCHES, BITSLOTH_ENABLE_LOGGING, logger
 from .utils import patch_function, raise_error
 
 # MXFP4 configuration
-# Set UNSLOTH_MXFP4_NO_DEQUANTIZE=1 to keep MXFP4 weights quantized (requires triton_kernels)
+# Set bitsloth_MXFP4_NO_DEQUANTIZE=1 to keep MXFP4 weights quantized (requires triton_kernels)
 # Otherwise, MXFP4 weights will be dequantized to bf16 for LoRA training
-UNSLOTH_MXFP4_NO_DEQUANTIZE = os.environ.get("UNSLOTH_MXFP4_NO_DEQUANTIZE", "0") == "1"
+bitsloth_MXFP4_NO_DEQUANTIZE = os.environ.get("bitsloth_MXFP4_NO_DEQUANTIZE", "0") == "1"
 
 
 def _check_triton_kernels_available():
@@ -56,19 +56,19 @@ def should_dequantize_mxfp4():
     Check if MXFP4 should be dequantized to bf16 for training.
 
     Returns True if:
-    - UNSLOTH_MXFP4_NO_DEQUANTIZE is not set or "0", OR
-    - UNSLOTH_MXFP4_NO_DEQUANTIZE="1" but triton_kernels is not available
+    - bitsloth_MXFP4_NO_DEQUANTIZE is not set or "0", OR
+    - bitsloth_MXFP4_NO_DEQUANTIZE="1" but triton_kernels is not available
 
     Returns False if:
-    - UNSLOTH_MXFP4_NO_DEQUANTIZE="1" AND triton_kernels is available
+    - bitsloth_MXFP4_NO_DEQUANTIZE="1" AND triton_kernels is available
     """
-    if not UNSLOTH_MXFP4_NO_DEQUANTIZE:
+    if not bitsloth_MXFP4_NO_DEQUANTIZE:
         return True  # Default: dequantize for compatibility
 
     if not is_triton_kernels_available():
         if BITSLOTH_ENABLE_LOGGING:
             logger.warning(
-                "Unsloth: UNSLOTH_MXFP4_NO_DEQUANTIZE=1 but triton_kernels not available. "
+                "bitsloth: bitsloth_MXFP4_NO_DEQUANTIZE=1 but triton_kernels not available. "
                 "Will dequantize MXFP4 to bf16."
             )
         return True  # triton_kernels required for native MXFP4
@@ -81,14 +81,14 @@ def get_mxfp4_config_for_training():
     Get the appropriate Mxfp4Config for training.
 
     Returns Mxfp4Config with dequantize=True unless:
-    - UNSLOTH_MXFP4_NO_DEQUANTIZE=1 AND triton_kernels is available
+    - bitsloth_MXFP4_NO_DEQUANTIZE=1 AND triton_kernels is available
 
     Usage:
         from bitsloth_zoo.temporary_patches.mxfp4 import get_mxfp4_config_for_training
         from transformers import AutoModelForCausalLM
 
         model = AutoModelForCausalLM.from_pretrained(
-            "unsloth/gpt-oss-20b",
+            "bitsloth/gpt-oss-20b",
             quantization_config=get_mxfp4_config_for_training(),
         )
     """
@@ -103,10 +103,10 @@ def get_mxfp4_config_for_training():
 
     if BITSLOTH_ENABLE_LOGGING:
         if dequantize:
-            logger.info("Unsloth: MXFP4 will be dequantized to bf16 for training")
+            logger.info("bitsloth: MXFP4 will be dequantized to bf16 for training")
         else:
             logger.info(
-                "Unsloth: MXFP4 weights will remain quantized (triton_kernels available)"
+                "bitsloth: MXFP4 weights will remain quantized (triton_kernels available)"
             )
 
     return Mxfp4Config(dequantize=dequantize)
@@ -325,12 +325,12 @@ def patch_convert_moe_packed_tensors():
         )
         if BITSLOTH_ENABLE_LOGGING:
             logger.info(
-                "Unsloth: Successfully added convert_moe_packed_tensors_cpu function."
+                "bitsloth: Successfully added convert_moe_packed_tensors_cpu function."
             )
     else:
         if BITSLOTH_ENABLE_LOGGING:
             logger.info(
-                "Unsloth: Failed to add convert_moe_packed_tensors_cpu - original function not found."
+                "bitsloth: Failed to add convert_moe_packed_tensors_cpu - original function not found."
             )
 
 

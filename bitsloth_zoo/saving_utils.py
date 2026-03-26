@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -43,7 +43,7 @@ base_model: {base_model}
 tags:
 - text-generation-inference
 - transformers
-- unsloth
+- bitsloth
 - {model_type}
 - {extra}
 license: apache-2.0
@@ -57,9 +57,9 @@ language:
 - **License:** apache-2.0
 - **Finetuned from model :** {base_model}
 
-This {model_type} model was trained 2x faster with [Unsloth](https://github.com/unslothai/unsloth) and Huggingface's TRL library.
+This {model_type} model was trained 2x faster with [bitsloth](https://github.com/bitslothai/bitsloth) and Huggingface's TRL library.
 
-[<img src="https://raw.githubusercontent.com/unslothai/unsloth/main/images/unsloth%20made%20with%20love.png" width="200"/>](https://github.com/unslothai/unsloth)
+[<img src="https://raw.githubusercontent.com/bitslothai/bitsloth/main/images/bitsloth%20made%20with%20love.png" width="200"/>](https://github.com/bitslothai/bitsloth)
 """
 
 import torch
@@ -110,11 +110,11 @@ def create_huggingface_repo(
     private=False,
     token=None,
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     assert type(repo_id) is str
     if repo_id.count("/") != 1:
         raise TypeError(
-            f"Unsloth: You are pushing to Hugging Face, but {repo_id} is not a valid repo."
+            f"bitsloth: You are pushing to Hugging Face, but {repo_id} is not a valid repo."
         )
 
     from huggingface_hub import ModelCard, HfApi
@@ -148,10 +148,10 @@ def create_huggingface_repo(
         base_model=base_model,
         model_type=model.config.model_type,
         method="",
-        extra="unsloth",
+        extra="bitsloth",
     )
     card = ModelCard(content)
-    card.push_to_hub(repo_id, token=token, commit_message="Unsloth Model Card")
+    card.push_to_hub(repo_id, token=token, commit_message="bitsloth Model Card")
 
     hf_api = HfApi(token=token)
     return username, repo_id, hf_api
@@ -189,7 +189,7 @@ def _merge_lora(W, lora_stats, name):
         W = W.addmm_(lora_B, lora_A, alpha=lora_stats.alpha)
     if not torch.isfinite(torch.amax(W)).item():
         raise ValueError(
-            "Unsloth: Merge failed as there are infinite elements in " + name
+            "bitsloth: Merge failed as there are infinite elements in " + name
         )
     return W
 
@@ -219,7 +219,7 @@ def _get_modules_to_save_weight(module):
 
 
 def check_if_quantized(module: torch.nn.Module) -> bool:
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Adapted from https://github.com/huggingface/peft/blob/main/src/peft/utils/integrations.py
     if not hasattr(module, "weight"):
         return False
@@ -263,7 +263,7 @@ pass
 
 
 def expand_module_keys(name, module, original_keys):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     keys = module.state_dict().keys()
     for key in keys:
         original_keys.add(name + "." + key)
@@ -353,7 +353,7 @@ def assert_same_keys(model, new_state_dict):
 
     difference = original_keys ^ new_keys
     if len(difference) != 0:
-        raise RuntimeError(f"Unsloth: Extracted keys = {difference} do not match!")
+        raise RuntimeError(f"bitsloth: Extracted keys = {difference} do not match!")
 
 
 pass
@@ -361,7 +361,7 @@ pass
 
 @torch.inference_mode
 def create_lora_statistics(model, merge_into_original=False, return_state_dict=True):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # merge_into_original is merging directly into 16bit downloaded model
     # without dequantizing
     Linear_LoRA_Layers = get_lora_layer_modules()
@@ -468,12 +468,12 @@ def create_lora_statistics(model, merge_into_original=False, return_state_dict=T
 
     if not (module_count == lora_A_count == lora_B_count == scaling_count):
         print(
-            f"[Unsloth merge debug] LoRA count mismatch: modules={module_count}, "
+            f"[bitsloth merge debug] LoRA count mismatch: modules={module_count}, "
             f"lora_A={lora_A_count}, lora_B={lora_B_count}, scaling={scaling_count}"
         )
         try:
             items = list(lora_weights.items())
-            print(f"[Unsloth merge debug] Total LoRA keys: {len(lora_weights)}")
+            print(f"[bitsloth merge debug] Total LoRA keys: {len(lora_weights)}")
             for k, v in items[:10]:
                 param_name = getattr(v.module, "parameter_name", None)
                 a_shape = tuple(v.lora_A.shape) if v.lora_A is not None else None
@@ -540,7 +540,7 @@ try:
     SAFETENSORS_DTYPES = safetensors.torch._TYPES
 except:
     logger.info(
-        "Unsloth: `safetensors.torch._TYPES` does not exist. Will set to our default version"
+        "bitsloth: `safetensors.torch._TYPES` does not exist. Will set to our default version"
     )
     SAFETENSORS_DTYPES = {
         "F64": torch.float64,
@@ -575,7 +575,7 @@ def _merge_and_overwrite_lora(
     counted_lora_modules=None,
     tie_word_embeddings=False,
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Merges LoRA and overwrites the safetensors file it was merged to
     if base_model_is_quantized and quant_type == "mxfp4" and save_method != "mxfp4":
         if BITSLOTH_ENABLE_LOGGING:
@@ -1524,7 +1524,7 @@ def _merge_and_overwrite_lora_mxfp4(
     base_model_is_quantized=False,
     quant_type=None,
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Merges LoRA and overwrites the safetensors file it was merged to
     filename_original = os.path.join(save_directory, filename)  # Original file path
     tensors = OrderedDict()
@@ -1833,7 +1833,7 @@ def prepare_saving(
     min_size_in_bytes=100_000_000,  # Must be of this size - 100MB default
     use_temp_file=False,
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Check size
     from huggingface_hub.serialization._base import parse_size_to_int
 
@@ -1885,7 +1885,7 @@ def prepare_saving(
             os.makedirs(save_directory, exist_ok=True)
         except Exception as error:
             raise RuntimeError(
-                f"Unsloth: Error creating directory {save_directory} with error = {str(error)}"
+                f"bitsloth: Error creating directory {save_directory} with error = {str(error)}"
             )
     pass
 
@@ -1896,7 +1896,7 @@ def prepare_saving(
     def raise_upload_works():
         # Works with individual shard uploading
         raise RuntimeError(
-            "Unsloth: Failed saving locally - no disk space left. "
+            "bitsloth: Failed saving locally - no disk space left. "
             "Uploading can work luckily! Use .push_to_hub instead."
         )
 
@@ -1931,10 +1931,10 @@ def prepare_saving(
         if not push_to_hub and free > save_size:
             raise_upload_works()
         elif push_to_hub and free < save_size:
-            raise RuntimeError("Unsloth: Failed uploading - no disk space left.")
+            raise RuntimeError("bitsloth: Failed uploading - no disk space left.")
         elif push_to_hub:
             print(
-                f"Unsloth: Saving to {save_directory} will fail, but using a temp folder works! "
+                f"bitsloth: Saving to {save_directory} will fail, but using a temp folder works! "
                 "Switching to a temp folder then uploading!"
             )
             # Switch to temp directory
@@ -2079,7 +2079,7 @@ def merge_and_overwrite_lora(
     get_model_name,
     model,
     tokenizer=None,
-    save_directory="unsloth_finetuned_merge",
+    save_directory="bitsloth_finetuned_merge",
     push_to_hub=False,
     private=False,
     token=None,
@@ -2089,7 +2089,7 @@ def merge_and_overwrite_lora(
     use_temp_file=False,
     cleanup_temp_file=True,
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Directly downloads 16bit original weights and merges LoRA
     inner_model = model.base_model.model if isinstance(model, PeftModel) else model
     inner_model = (
@@ -2139,7 +2139,7 @@ def merge_and_overwrite_lora(
         model_name = final_model_name
 
         # Handle case for local model where config._name_or_path is a local os path
-        # https://github.com/unslothai/unsloth/issues/2140
+        # https://github.com/bitslothai/bitsloth/issues/2140
         is_local_path = False
         if os.path.exists(model_name) and os.path.isdir(model_name):
             is_local_path = True
@@ -2262,7 +2262,7 @@ def merge_and_overwrite_lora(
                 model_name = get_model_name(
                     model_name.removesuffix("-BF16"), load_in_4bit=False
                 )
-                print(f"Unsloth: Found MXFP4 variant = `{model_name}`")
+                print(f"bitsloth: Found MXFP4 variant = `{model_name}`")
                 # Re-get all meta-data from scratch
                 safetensors_list = []
                 max_size_in_bytes = 0
@@ -2281,7 +2281,7 @@ def merge_and_overwrite_lora(
         extras = {
             "repo_id": repo_id,
             "repo_type": "model",
-            "commit_message": "(Trained with Unsloth)",
+            "commit_message": "(Trained with bitsloth)",
         }
         if filename is None:
             hf_api.upload_folder(
@@ -2306,7 +2306,7 @@ def merge_and_overwrite_lora(
     # --- Handle 4-bit merging first ---
     if save_method == "merged_4bit" or save_method == "forced_merged_4bit":
         base_model = model.base_model if isinstance(model, PeftModel) else model
-        print(f"Unsloth: Merging LoRA weights into 4bit model...")
+        print(f"bitsloth: Merging LoRA weights into 4bit model...")
         if not isinstance(model, PeftModelForCausalLM) and not isinstance(
             model, PeftModel
         ):
@@ -2322,7 +2322,7 @@ def merge_and_overwrite_lora(
         try:
             # Use the base_model reference which points to the PeftModel's base
             merged_model = base_model.merge_and_unload()
-            print(f"Unsloth: Merging finished.")
+            print(f"bitsloth: Merging finished.")
         except Exception as e:
             raise RuntimeError(f"Failed to merge LoRA weights for 4-bit save: {e}")
 
@@ -2330,7 +2330,7 @@ def merge_and_overwrite_lora(
         skipped_modules, _ = find_skipped_quantized_modules(merged_model)
         if len(skipped_modules) > 0:
             print(
-                f"Unsloth: Found skipped modules: {skipped_modules}. Updating config."
+                f"bitsloth: Found skipped modules: {skipped_modules}. Updating config."
             )
             # Ensure quantization_config exists before modifying
             if not hasattr(merged_model.config, "quantization_config"):
@@ -2339,10 +2339,10 @@ def merge_and_overwrite_lora(
                 skipped_modules
             )
 
-        print(f"Unsloth: Saving merged 4bit model to {save_directory}...")
+        print(f"bitsloth: Saving merged 4bit model to {save_directory}...")
         try:
             merged_model.save_pretrained(save_directory=save_directory)
-            print(f"Unsloth: Merged 4bit model saved.")
+            print(f"bitsloth: Merged 4bit model saved.")
         except Exception as e:
             raise RuntimeError(f"Failed to save merged 4-bit model: {e}")
         fix_tokenizer_config_json(tokenizer, save_directory)
@@ -2353,13 +2353,13 @@ def merge_and_overwrite_lora(
 
         # Clean up temp file if created
         if cleanup_temp_file and temp_file is not None:
-            print("Unsloth: Cleaning up temporary file...")
+            print("bitsloth: Cleaning up temporary file...")
             try:
                 temp_file.cleanup()
             except Exception as e:
                 print(f"Warning: Failed to cleanup temp file: {e}")
 
-        print("Unsloth: Merged 4bit model process completed.")
+        print("bitsloth: Merged 4bit model process completed.")
         return save_directory  # <<<--- EARLY RETURN for 4-bit path
     pass
 
@@ -2496,7 +2496,7 @@ def merge_and_overwrite_lora(
 
     # Step 5: Iterate through original shards, merge LoRA, and overwrite/save
     for filename in ProgressBar(
-        safetensors_list, desc="Unsloth: Preparing safetensor model files"
+        safetensors_list, desc="bitsloth: Preparing safetensor model files"
     ):
         file_path = os.path.join(save_directory, filename)
         # Only download if we didn't get everything from cache AND this specific file doesn't exist
@@ -2576,7 +2576,7 @@ def merge_and_overwrite_lora(
 
     for filename in ProgressBar(
         final_safetensors_list,
-        desc=f"Unsloth: Merging weights into {'mxfp4' if save_method == 'mxfp4' else '16bit'}",
+        desc=f"bitsloth: Merging weights into {'mxfp4' if save_method == 'mxfp4' else '16bit'}",
     ):
         merged_count, shard_keys = _merge_and_overwrite_lora(
             save_directory=save_directory,
@@ -2618,7 +2618,7 @@ def merge_and_overwrite_lora(
     # Step 6: Regenerate index ONLY for MXFP4 dequantization
     if regenerate_index:
         # The logic is now simpler: we just write the map we already built.
-        print("Unsloth: Regenerating safetensors index for dequantized MXFP4 model...")
+        print("bitsloth: Regenerating safetensors index for dequantized MXFP4 model...")
 
         index_data = {"metadata": {}, "weight_map": weight_map}
         index_path = os.path.join(save_directory, "model.safetensors.index.json")
@@ -2656,7 +2656,7 @@ def merge_and_overwrite_lora(
 
     if effective_loras != n_saved_modules:
         raise RuntimeError(
-            f"Unsloth: Saving LoRA finetune failed since # of LoRAs = {effective_loras} "
+            f"bitsloth: Saving LoRA finetune failed since # of LoRAs = {effective_loras} "
             f"does not match # of saved modules = {n_saved_modules}. Please file a bug report!"
         )
     pass
@@ -2678,7 +2678,7 @@ def merge_and_overwrite_lora(
             )
     pass
     print(
-        f"Unsloth: Merge process complete. Saved to `{os.path.abspath(save_directory)}`"
+        f"bitsloth: Merge process complete. Saved to `{os.path.abspath(save_directory)}`"
     )
 
     return save_directory
@@ -2758,7 +2758,7 @@ def _try_copy_all_from_cache(
     all_copied = True
     for filename, cached_path in ProgressBar(
         cached_paths_map.items(),
-        desc=f"Unsloth: Copying {len(filenames_to_check)} files from cache to `{target_dir_str}`",
+        desc=f"bitsloth: Copying {len(filenames_to_check)} files from cache to `{target_dir_str}`",
     ):
         try:
             # Pass string target_dir_str to copy helper
@@ -2870,11 +2870,11 @@ PushToHubMixin._upload_modified_files(
     working_dir = save_directory,
     repo_id = '{repo_id}',
     files_timestamps = files_timestamps,
-    commit_message = "Upload Unsloth finetuned model",
+    commit_message = "Upload bitsloth finetuned model",
     token = token,
     create_pr = False,
     revision = {revision},
-    commit_description = "Upload Unsloth finetuned model",
+    commit_description = "Upload bitsloth finetuned model",
 )
 if {use_temp_file} and temp_file is not None: temp_file.cleanup()
 else:
@@ -2894,7 +2894,7 @@ def incremental_save_pretrained(
     repo_id="",
     revision=None,
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Move file timestamps out
     makedir = re.search(r"os\.makedirs\(save_directory.+?\n", save_pretrained)
     assert makedir is not None
@@ -2909,7 +2909,7 @@ def incremental_save_pretrained(
     # Find the main loop
     if "for shard_file, tensors in filename_to_tensors" not in save_pretrained:
         raise RuntimeError(
-            "Unsloth: Failed to find `for shard_file, tensors in filename_to_tensors`"
+            "bitsloth: Failed to find `for shard_file, tensors in filename_to_tensors`"
         )
     for_loop = re.search(
         r"for shard_file, tensors in filename_to_tensors\:"
@@ -2975,7 +2975,7 @@ def incremental_save_pretrained(
     if not low_disk_space_usage:
         save_pretrained = save_pretrained.replace(
             "for shard_file, tensors in filename_to_tensors",
-            "for shard_file, tensors in ProgressBar(filename_to_tensors, desc = 'Unsloth: Saving ' + str(len(filename_to_tensors)) + ' safetensor(s)')",
+            "for shard_file, tensors in ProgressBar(filename_to_tensors, desc = 'bitsloth: Saving ' + str(len(filename_to_tensors)) + ' safetensor(s)')",
             1,
         )
     pass
@@ -2988,7 +2988,7 @@ pass
 def merge_and_dequantize_lora(
     model,
     tokenizer=None,
-    save_directory="unsloth_finetuned_merge",
+    save_directory="bitsloth_finetuned_merge",
     push_to_hub=False,
     max_shard_size="5GB",
     safe_serialization=True,
@@ -3000,7 +3000,7 @@ def merge_and_dequantize_lora(
     use_temp_file=False,
     **kwargs,
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     # Dequantizes model to 16bit weights and merges LoRA
     inner_model = (
         model.base_model.model if isinstance(model, PeftModelForCausalLM) else model
@@ -3091,14 +3091,14 @@ def merge_and_dequantize_lora(
     """
     left = save_pretrained.find("state_dict_split = split_torch_state_dict_into_shards")
     if left == -1:
-        raise RuntimeError("Unsloth: Failed to find `state_dict_split`")
+        raise RuntimeError("bitsloth: Failed to find `state_dict_split`")
     right = save_pretrained.find(")", left) + 1
     save_pretrained = (
         save_pretrained[:left] + replace_state_dict + save_pretrained[right:]
     )
 
     if "state_dict[tensor].contiguous()" not in save_pretrained:
-        raise RuntimeError("Unsloth: Failed to find `state_dict[tensor].contiguous()`")
+        raise RuntimeError("bitsloth: Failed to find `state_dict[tensor].contiguous()`")
     save_pretrained = save_pretrained.replace(
         "state_dict[tensor].contiguous()",
         "merge_lora_weights(state_dict, tensor).contiguous()",
@@ -3106,7 +3106,7 @@ def merge_and_dequantize_lora(
     )
 
     if "def save_pretrained" not in save_pretrained:
-        raise RuntimeError("Unsloth: Failed to find `def save_pretrained`")
+        raise RuntimeError("bitsloth: Failed to find `def save_pretrained`")
     save_pretrained = save_pretrained.replace(
         "def save_pretrained",
         "def save_pretrained_dequantized",
@@ -3146,13 +3146,13 @@ def merge_and_dequantize_lora(
             working_dir=save_directory,
             repo_id=repo_id,
             files_timestamps=files_timestamps,
-            commit_message="Upload Unsloth finetuned model",
+            commit_message="Upload bitsloth finetuned model",
             token=token,
             create_pr=False,
             revision=revision,
-            commit_description="Upload Unsloth finetuned model",
+            commit_description="Upload bitsloth finetuned model",
         )
-        print(f"Unsloth: Uploaded model to https://huggingface.co/{repo_id}")
+        print(f"bitsloth: Uploaded model to https://huggingface.co/{repo_id}")
         return commit
     pass
     if temp_file is not None:
@@ -3973,7 +3973,7 @@ def renumber_safetensor_files(file_list, save_directory):
 
     if BITSLOTH_ENABLE_LOGGING:
         logger.info(
-            "Unsloth: Renumbering safetensor files with sequential numbering..."
+            "bitsloth: Renumbering safetensor files with sequential numbering..."
         )
 
     # Create mapping of old -> new names
@@ -4089,8 +4089,8 @@ def _write_tensor_direct_torch(
 
 
 pass
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by

@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -36,9 +36,9 @@ __all__ = [
 
 FIRST_PASS = True
 BITSLOTH_ENABLE_LOGGING = os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1"
-UNSLOTH_ENABLE_TILED_LOGGING = (
+bitsloth_ENABLE_TILED_LOGGING = (
     BITSLOTH_ENABLE_LOGGING
-    and os.environ.get("UNSLOTH_ENABLE_TILED_LOGGING", "0") == "1"
+    and os.environ.get("bitsloth_ENABLE_TILED_LOGGING", "0") == "1"
 )
 
 torch_amp_custom_fwd = torch.amp.custom_fwd(device_type=DEVICE_TYPE)
@@ -117,9 +117,9 @@ class TiledMLP(torch.autograd.Function):
             split_sizes.append(remainder)
         ctx.split_sizes = split_sizes
         global FIRST_PASS
-        if (FIRST_PASS and BITSLOTH_ENABLE_LOGGING) or UNSLOTH_ENABLE_TILED_LOGGING:
+        if (FIRST_PASS and BITSLOTH_ENABLE_LOGGING) or bitsloth_ENABLE_TILED_LOGGING:
             print(
-                f"Unsloth: Enabling TiledMLP to reduce VRAM usage! chunk size: {split_sizes[0]}"
+                f"bitsloth: Enabling TiledMLP to reduce VRAM usage! chunk size: {split_sizes[0]}"
             )
             FIRST_PASS = False
 
@@ -242,7 +242,7 @@ def patch_mlp(mlp_module, target_arctic=True, target_gb=None, padded_length=128)
     # unbound
     mlp_module._original_forward = mlp_module.__class__.forward
     # second is what llama style patch uses
-    mlp_module._unsloth_forward = mlp_module.__class__.forward
+    mlp_module._bitsloth_forward = mlp_module.__class__.forward
 
     def tiled_forward_target_gb(self, x):
         nonlocal target_gb
@@ -272,7 +272,7 @@ def patch_mlp(mlp_module, target_arctic=True, target_gb=None, padded_length=128)
         n_shards = max(1, n_shards)
 
         # this call binds
-        inner_forward = self._unsloth_forward.__get__(self, self.__class__)
+        inner_forward = self._bitsloth_forward.__get__(self, self.__class__)
         return TiledMLP.apply(
             inner_forward, mlp_module, x, preserve_rng_state, n_shards, max_flat_qlen
         )
@@ -285,7 +285,7 @@ def patch_mlp(mlp_module, target_arctic=True, target_gb=None, padded_length=128)
         # remainder gets added to the last shard in the forward pass
 
         # this call binds
-        inner_forward = self._unsloth_forward.__get__(self, self.__class__)
+        inner_forward = self._bitsloth_forward.__get__(self, self.__class__)
         return TiledMLP.apply(
             inner_forward, mlp_module, x, preserve_rng_state, n_shards, chunk_size
         )

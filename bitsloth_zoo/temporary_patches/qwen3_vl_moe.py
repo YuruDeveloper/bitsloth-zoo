@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -50,7 +50,7 @@ from .moe_utils import (
 
 
 def patch_qwen3_vl_moe():
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
     # Patch ParamWrapper.forward for MoE separated LoRA
     patch_param_wrapper_for_moe()
@@ -210,7 +210,7 @@ def patch_qwen3_vl_moe():
             This ensures checkpoint loading works correctly, and the forward
             can use weights directly with torch._grouped_mm without transposition.
             """
-            # This Unsloth Zoo code section is licensed under AGPL3
+            # This bitsloth Zoo code section is licensed under AGPL3
 
             super(
                 transformers.models.qwen3_vl_moe.modeling_qwen3_vl_moe.Qwen3VLMoeTextExperts,
@@ -235,7 +235,7 @@ def patch_qwen3_vl_moe():
             self.act_fn = ACT2FN[config.hidden_act]
 
             # Mark that weights are already in grouped_mm format (no transpose needed)
-            self._unsloth_grouped_mm_format = True
+            self._bitsloth_grouped_mm_format = True
 
         # Patch __init__ before any model instantiation
         patch_function(
@@ -261,7 +261,7 @@ def patch_qwen3_vl_moe():
             - weight_A (E*R, H): Input projection. Reshape(E, R, H) -> Permute(0, 2, 1) -> (E, H, R).
             - weight_B (Out, E*R): Output projection. Reshape(Out, E, R) -> Permute(1, 2, 0) -> (E, R, Out).
             """
-            # This Unsloth Zoo code section is licensed under AGPL3
+            # This bitsloth Zoo code section is licensed under AGPL3
 
             total_rank = weight_A.shape[0]
             rank_per_expert = total_rank // num_experts
@@ -283,7 +283,7 @@ def patch_qwen3_vl_moe():
             return first_weight, second_weight, scaling, num_experts
 
         # Register the extractor on the Experts class
-        transformers.models.qwen3_vl_moe.modeling_qwen3_vl_moe.Qwen3VLMoeTextExperts._unsloth_lora_extractor_fn = _qwen3_vl_lora_extractor
+        transformers.models.qwen3_vl_moe.modeling_qwen3_vl_moe.Qwen3VLMoeTextExperts._bitsloth_lora_extractor_fn = _qwen3_vl_lora_extractor
 
         backend = select_moe_backend()
 
@@ -303,7 +303,7 @@ def patch_qwen3_vl_moe():
                     self, hidden_states, top_k_index, top_k_weights
                 )
 
-        elif backend == "unsloth_triton":
+        elif backend == "bitsloth_triton":
 
             def forward(
                 self,
@@ -347,7 +347,7 @@ def patch_qwen3_vl_moe():
                 (router_logits, router_scores, router_indices)
             where router_scores are already normalized.
             """
-            # This Unsloth Zoo code section is licensed under AGPL3
+            # This bitsloth Zoo code section is licensed under AGPL3
 
             if hidden_states.dim() == 3:
                 batch_size, sequence_length, hidden_dim = hidden_states.shape
@@ -423,7 +423,7 @@ def patch_qwen3_vl_moe():
 
     # ====================================================================
     # Patch Qwen3VLMoeForConditionalGeneration.forward for GRPO training
-    # When UNSLOTH_RETURN_HIDDEN_STATES=1, return hidden_states instead of logits
+    # When bitsloth_RETURN_HIDDEN_STATES=1, return hidden_states instead of logits
     # ====================================================================
     try:
         from transformers.models.qwen3_vl_moe.modeling_qwen3_vl_moe import (
@@ -450,7 +450,7 @@ def patch_qwen3_vl_moe():
             **kwargs,
         ):
             RETURN_HIDDEN_STATES = (
-                os.environ.get("UNSLOTH_RETURN_HIDDEN_STATES", "0") == "1"
+                os.environ.get("bitsloth_RETURN_HIDDEN_STATES", "0") == "1"
             )
 
             if not RETURN_HIDDEN_STATES:
@@ -508,7 +508,7 @@ def patch_qwen3_vl_moe():
                 rope_deltas=outputs.rope_deltas,
             )
 
-        # Preserve __qualname__ so _unsloth_get_batch_samples can detect
+        # Preserve __qualname__ so _bitsloth_get_batch_samples can detect
         # this is a ForConditionalGeneration forward and compute num_items_in_batch properly.
         _patched_causal_lm_forward.__qualname__ = (
             _original_causal_lm_forward.__qualname__
@@ -516,12 +516,12 @@ def patch_qwen3_vl_moe():
         Qwen3VLMoeForConditionalGeneration.forward = _patched_causal_lm_forward
         if BITSLOTH_ENABLE_LOGGING:
             logger.info(
-                "Unsloth: Patched Qwen3VLMoeForConditionalGeneration.forward for GRPO hidden states."
+                "bitsloth: Patched Qwen3VLMoeForConditionalGeneration.forward for GRPO hidden states."
             )
     except Exception as e:
         if BITSLOTH_ENABLE_LOGGING:
             logger.warning(
-                f"Unsloth: Could not patch Qwen3VLMoeForConditionalGeneration.forward: {e}"
+                f"bitsloth: Could not patch Qwen3VLMoeForConditionalGeneration.forward: {e}"
             )
 
 

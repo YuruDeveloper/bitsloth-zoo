@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -170,7 +170,7 @@ pass
 
 
 def patch_torch_functions():
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     if not hasattr(torch.nn.functional, "_uncompiled_layer_norm"):
         torch.nn.functional._uncompiled_layer_norm = torch.nn.functional.layer_norm
         torch.nn.functional.layer_norm = layer_norm
@@ -188,7 +188,7 @@ pass
 try:
     import torchao.quantization.qat.fake_quantizer
 
-    if not hasattr(torchao.quantization.qat.fake_quantizer, "__UNSLOTH_PATCHED__"):
+    if not hasattr(torchao.quantization.qat.fake_quantizer, "__bitsloth_PATCHED__"):
         qat_classes = dir(torchao.quantization.qat.fake_quantizer)
         for qat_class in qat_classes:
             if qat_class.startswith("_"):
@@ -198,7 +198,7 @@ try:
                 # Skip already compiled functions
                 if not hasattr(qat_class.forward, "get_compiler_config"):
                     qat_class.forward = torch_compile(qat_class.forward)
-        torchao.quantization.qat.fake_quantizer.__UNSLOTH_PATCHED__ = True
+        torchao.quantization.qat.fake_quantizer.__bitsloth_PATCHED__ = True
 except Exception as e:
     if BITSLOTH_ENABLE_LOGGING:
         logger.warning(f"TorchAO patching failed with exception = {str(e)}")

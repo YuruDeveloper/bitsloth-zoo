@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bitsloth_zoo"
 dynamic = ["version"]
-description = "Utils for Unsloth"
+description = "Utils for bitsloth"
 readme = "README.md"
 requires-python = ">=3.9,<3.15"
 license = "LGPL-3.0-or-later"
@@ -85,7 +85,7 @@ huggingface = [
     "triton-windows ; (sys_platform == 'win32') and (platform_machine == 'AMD64' or platform_machine == 'x86_64')",
 ]
 base = [
-    "unsloth_zoo[huggingface]",
+    "bitsloth_zoo[huggingface]",
 ]
 intelgpu = [
     "torch>=2.4.0",

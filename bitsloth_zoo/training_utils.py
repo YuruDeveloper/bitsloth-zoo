@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -27,15 +27,15 @@ from typing import Any, Optional, List, Dict, Tuple
 from .utils import _get_dtype, Version
 from .hf_utils import dtype_from_config
 from .gradient_checkpointing import (
-    unpatch_unsloth_gradient_checkpointing,
-    unpatch_unsloth_smart_gradient_checkpointing,
+    unpatch_bitsloth_gradient_checkpointing,
+    unpatch_bitsloth_smart_gradient_checkpointing,
 )
 import os
 import re
 
 __all__ = [
     "fix_zero_training_loss",
-    "unsloth_train",
+    "bitsloth_train",
     "prepare_model_for_training",
 ]
 
@@ -46,7 +46,7 @@ def fix_zero_training_loss(model, tokenizer, train_dataset):
     Sometimes the labels get masked by all -100s, causing the loss
     to be 0. We check for this!
     """
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     if isinstance(train_dataset, datasets.IterableDataset):
         # Skip the check since the code below assumes
         # an indexable dataset
@@ -74,7 +74,7 @@ def fix_zero_training_loss(model, tokenizer, train_dataset):
 
         elif seen_bad / (seen_bad + seen_good) == 1:
             raise ZeroDivisionError(
-                "Unsloth: All labels in your dataset are -100. Training losses will be all 0.\n"\
+                "bitsloth: All labels in your dataset are -100. Training losses will be all 0.\n"\
                 "For example, are you sure you used `train_on_responses_only` correctly?\n"\
                 "Or did you mask our tokens incorrectly? Maybe this is intended?\n"\
                 "Maybe you're using a Llama chat template on a non Llama model for example?"\
@@ -82,7 +82,7 @@ def fix_zero_training_loss(model, tokenizer, train_dataset):
             )
         elif seen_bad / (seen_bad + seen_good) >= 0.9:
             print(
-                "Unsloth: Nearly all labels in your dataset are -100. Training losses will be all 0.\n"\
+                "bitsloth: Nearly all labels in your dataset are -100. Training losses will be all 0.\n"\
                 "For example, are you sure you used `train_on_responses_only` correctly?\n"\
                 "Or did you mask our tokens incorrectly? Maybe this is intended?\n"\
                 "Maybe you're using a Llama chat template on a non Llama model for example?"\
@@ -95,7 +95,7 @@ pass
 @torch.no_grad
 def prepare_model_for_training(
     model                      : Any,
-    use_gradient_checkpointing : Optional = "unsloth",
+    use_gradient_checkpointing : Optional = "bitsloth",
     use_reentrant              : Optional[bool] = True,
     full_finetuning            : Optional[bool] = False,
     train_layernorms           : Optional[bool] = False,
@@ -104,8 +104,8 @@ def prepare_model_for_training(
     float32_mixed_precision    : Optional[bool] = True,
     patch_modules_to_save      : Optional[bool] = False,
 ) -> Any:
-    # All Unsloth Zoo code licensed under LGPLv3
-    assert(use_gradient_checkpointing in (True, False, "unsloth",))
+    # All bitsloth Zoo code licensed under LGPLv3
+    assert(use_gradient_checkpointing in (True, False, "bitsloth",))
     assert(type(use_reentrant) is bool)
     assert(type(full_finetuning) is bool)
     assert(type(train_layernorms) is bool)
@@ -118,25 +118,25 @@ def prepare_model_for_training(
     if dtype == torch.float16:
         # We need to upcast to float32
         mixed_precision_dtype = torch.float32
-        os.environ["UNSLOTH_MIXED_PRECISION"] = "float32"
+        os.environ["bitsloth_MIXED_PRECISION"] = "float32"
         # For full finetuning, update config dtype to match actual weight dtype.
         # The KV cache uses model.config.torch_dtype, but weights are upcast to float32.
         # Without this, generation fails with dtype mismatch in index_copy_().
         if full_finetuning:
-            model._unsloth_original_dtype = dtype
+            model._bitsloth_original_dtype = dtype
             model.config.torch_dtype = torch.float32
     elif dtype == torch.bfloat16 and float32_mixed_precision:
         mixed_precision_dtype = torch.float32
-        os.environ["UNSLOTH_MIXED_PRECISION"] = "float32"
+        os.environ["bitsloth_MIXED_PRECISION"] = "float32"
         if full_finetuning:
-            model._unsloth_original_dtype = dtype
+            model._bitsloth_original_dtype = dtype
             model.config.torch_dtype = torch.float32
     elif dtype == torch.bfloat16:
         mixed_precision_dtype = torch.bfloat16
-        os.environ["UNSLOTH_MIXED_PRECISION"] = "bfloat16"
+        os.environ["bitsloth_MIXED_PRECISION"] = "bfloat16"
     else:
         mixed_precision_dtype = torch.float32
-        os.environ["UNSLOTH_MIXED_PRECISION"] = "float32"
+        os.environ["bitsloth_MIXED_PRECISION"] = "float32"
     pass
     for name, param in model.named_parameters():
         upcast = False
@@ -182,7 +182,7 @@ def prepare_model_for_training(
                 exec(f"model.{name}.to({str(dtype)})")
         pass
 
-        if ('norm.' in name or '_layernorm' in name) and os.environ.get("UNSLOTH_UPCAST_LAYERNORM", "0") == "1":
+        if ('norm.' in name or '_layernorm' in name) and os.environ.get("bitsloth_UPCAST_LAYERNORM", "0") == "1":
             try:
                 name = name.replace("base_model", "model", 1)
                 while re.search(r'\.(\d+)\.', name) is not None:
@@ -196,26 +196,26 @@ def prepare_model_for_training(
     pass
 
     # Gradient checkpointing
-    # If the user requested vanilla GC (True/False), ensure any prior Unsloth patch is undone.
-    if use_gradient_checkpointing != "unsloth":
-        unpatch_unsloth_gradient_checkpointing()
-        unpatch_unsloth_smart_gradient_checkpointing()
+    # If the user requested vanilla GC (True/False), ensure any prior bitsloth patch is undone.
+    if use_gradient_checkpointing != "bitsloth":
+        unpatch_bitsloth_gradient_checkpointing()
+        unpatch_bitsloth_smart_gradient_checkpointing()
     m = model
     while hasattr(m, "model"):
-        if use_gradient_checkpointing == "unsloth":
+        if use_gradient_checkpointing == "bitsloth":
             m._offloaded_gradient_checkpointing = True
         if use_gradient_checkpointing == True and hasattr(m, "gradient_checkpointing_enable"):
             m.gradient_checkpointing_enable()
         m = m.model
     pass
-    if use_gradient_checkpointing == "unsloth":
+    if use_gradient_checkpointing == "bitsloth":
         m._offloaded_gradient_checkpointing = True
     if use_gradient_checkpointing == True and hasattr(m, "gradient_checkpointing_enable"):
         m.gradient_checkpointing_enable()
 
     # Also set HF version manually to stop failures
     if hasattr(model, "_set_gradient_checkpointing"):
-        if use_gradient_checkpointing in (True, "unsloth"):
+        if use_gradient_checkpointing in (True, "bitsloth"):
             model._set_gradient_checkpointing()
         else:
             # Ensure checkpointing stays disabled if explicitly requested.
@@ -248,11 +248,11 @@ def prepare_model_for_training(
                     for saved_module in module.modules_to_save.modules():
                         if hasattr(saved_module, "weight"):
                             if saved_module.weight.dtype == torch.float16:
-                                print(f"Unsloth: Upcasting `{name}` from float16 to float32 since it's in `modules_to_save`. Also allowing gradients.")
+                                print(f"bitsloth: Upcasting `{name}` from float16 to float32 since it's in `modules_to_save`. Also allowing gradients.")
                                 saved_module.to(torch.float32)
                                 saved_module.requires_grad_(True)
                             else:
-                                print(f"Unsloth: Allowing gradients for `{name}` since it's in `modules_to_save`.")
+                                print(f"bitsloth: Allowing gradients for `{name}` since it's in `modules_to_save`.")
                                 saved_module.requires_grad_(True)
                     pass
                 pass
@@ -268,7 +268,7 @@ def get_max_steps(training_args, n_training_samples, train_dataset):
     # Approximately from https://github.com/huggingface/transformers/blob/main/src/transformers/trainer.py#L2092
     # Determines batch size, max steps, ga etc
     if training_args.world_size > 1:
-        raise RuntimeError('Unsloth currently does not support multi GPU setups - but we are working on it!')
+        raise RuntimeError('bitsloth currently does not support multi GPU setups - but we are working on it!')
     pass
 
     bsz = training_args.per_device_train_batch_size
@@ -315,14 +315,14 @@ class Trainer_Stats:
     metrics: dict
 pass
 
-def unsloth_train(trainer):
+def bitsloth_train(trainer):
     """
-    Unsloth Trainer
+    bitsloth Trainer
     1. Fixes gradient accumulation
     2. Scaled down version of HF's trainer
     3. Much less feature complete
     """
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     assert(hasattr(trainer, "args"))
     assert(hasattr(trainer, "model"))
     assert(hasattr(trainer, "train_dataset"))
@@ -337,7 +337,7 @@ def unsloth_train(trainer):
 
     if training_args.dataloader_drop_last:
         raise NotImplementedError(
-            "Unsloth: Currently `dataloader_drop_last` is not yet implemented!"
+            "bitsloth: Currently `dataloader_drop_last` is not yet implemented!"
         )
     pass
 
@@ -429,7 +429,7 @@ def unsloth_train(trainer):
     step = 0
     accumulated_loss = torch.zeros(1, device = "cuda:0", dtype = torch.float32)[0]
     debug_info = \
-        f'==((====))==  Unsloth - 2x faster free finetuning | Num GPUs = {training_args.world_size}\n'\
+        f'==((====))==  bitsloth - 2x faster free finetuning | Num GPUs = {training_args.world_size}\n'\
         f'    \\   /|    Num examples = {n_training_samples:,} | Num Epochs = {num_train_epochs:,}\n'\
         f'O^O/ \\_/ \\    Batch size per device = {training_args.per_device_train_batch_size:,} | Gradient Accumulation steps = {training_args.gradient_accumulation_steps}\n'\
         f'\\        /    Total batch size = {total_train_batch_size:,} | Total steps = {max_steps:,}\n'\
@@ -509,7 +509,7 @@ def unsloth_train(trainer):
         pass
     pass
     unset_training(model)
-    print("Unsloth: Finished training!")
+    print("bitsloth: Finished training!")
     end_time = time.time()
 
     # Return stats
@@ -517,8 +517,8 @@ def unsloth_train(trainer):
     return trainer_stats
 pass
 
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by

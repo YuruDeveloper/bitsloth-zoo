@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -18,7 +18,7 @@ __all__ = [
     "TEMPORARY_PATCHES",
     "torch_compile_options",
     "BITSLOTH_ENABLE_LOGGING",
-    "UNSLOTH_COMPILE_DISABLE",
+    "bitsloth_COMPILE_DISABLE",
     "get_torch_compile_options",
     "logger",
     "torch_compile",
@@ -32,7 +32,7 @@ from ..log import logger
 import functools
 
 BITSLOTH_ENABLE_LOGGING = os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1"
-UNSLOTH_COMPILE_DISABLE = os.environ.get("UNSLOTH_COMPILE_DISABLE", "0") == "1"
+bitsloth_COMPILE_DISABLE = os.environ.get("bitsloth_COMPILE_DISABLE", "0") == "1"
 
 # Get only allowed options
 import inspect
@@ -44,7 +44,7 @@ inductor_config_source = inspect.getsource(torch._inductor.config)
 @functools.lru_cache(1)
 def determine_compile_threads():
     # See https://github.com/pytorch/pytorch/blob/ab2294d8289a7757a2fc321cdefac88e2b378edf/torch/_inductor/config.py#L771
-    # Windows thread count = 1. See https://github.com/unslothai/unsloth-zoo/pull/187
+    # Windows thread count = 1. See https://github.com/bitslothai/bitsloth-zoo/pull/187
     if sys.platform == "win32":
         return 1
     cpu_count = os.cpu_count()
@@ -69,9 +69,9 @@ def get_torch_compile_options(
     use_block_ptr=False,
 ):
     BITSLOTH_COMPILE_DEBUG = os.environ.get("BITSLOTH_COMPILE_DEBUG", "0") == "1"
-    UNSLOTH_COMPILE_MAXIMUM = os.environ.get("UNSLOTH_COMPILE_MAXIMUM", "0") == "1"
-    UNSLOTH_COMPILE_IGNORE_ERRORS = (
-        os.environ.get("UNSLOTH_COMPILE_IGNORE_ERRORS", "0") == "1"
+    bitsloth_COMPILE_MAXIMUM = os.environ.get("bitsloth_COMPILE_MAXIMUM", "0") == "1"
+    bitsloth_COMPILE_IGNORE_ERRORS = (
+        os.environ.get("bitsloth_COMPILE_IGNORE_ERRORS", "0") == "1"
     )
     if BITSLOTH_ENABLE_LOGGING:
         logging = True
@@ -86,12 +86,12 @@ def get_torch_compile_options(
         from torch.hub import tqdm
 
         def replaced_tqdm(*args, **kwargs):
-            kwargs["desc"] = "Unsloth: Compiling kernels"
+            kwargs["desc"] = "bitsloth: Compiling kernels"
             return tqdm(*args, **kwargs)
 
         torch._inductor.async_compile.tqdm = replaced_tqdm
     except:
-        print("Unsloth: Failed editing tqdm to replace Inductor Compilation:")
+        print("bitsloth: Failed editing tqdm to replace Inductor Compilation:")
     pass
 
     torch_compile_options = {
@@ -104,9 +104,9 @@ def get_torch_compile_options(
         "dce": True,
         "memory_planning": memory_planning,
         "coordinate_descent_tuning": coordinate_descent_tuning
-        or UNSLOTH_COMPILE_MAXIMUM,
+        or bitsloth_COMPILE_MAXIMUM,
         "trace.graph_diagram": BITSLOTH_COMPILE_DEBUG or debug,
-        "compile_threads": determine_compile_threads(),  # Auto detects via https://github.com/unslothai/unsloth-zoo/pull/187
+        "compile_threads": determine_compile_threads(),  # Auto detects via https://github.com/bitslothai/bitsloth-zoo/pull/187
         "group_fusion": group_fusion,  # [DEPRECATED]
         "disable_progress": not logging,
         "verbose_progress": logging,
@@ -178,7 +178,7 @@ def noop(*args: Any, **kwargs: Any):
 
 pass
 
-if UNSLOTH_COMPILE_DISABLE:
+if bitsloth_COMPILE_DISABLE:
     torch_compile = noop
 else:
     torch_compile = functools.partial(
@@ -186,7 +186,7 @@ else:
         options=torch_compile_options,
     )
 
-if UNSLOTH_COMPILE_DISABLE:
+if bitsloth_COMPILE_DISABLE:
     _torch_compile = noop
 else:
     _torch_compile = functools.partial(

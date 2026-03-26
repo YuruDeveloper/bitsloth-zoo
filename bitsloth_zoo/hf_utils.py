@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -78,7 +78,7 @@ def set_dtype_in_config_fallback(config, dtype):
             config.__dict__["dtype"] = string_dtype
     except:
         if os.environ.get("BITSLOTH_ENABLE_LOGGING", "0") == "1":
-            print("Unsloth: Failed to set dtype in config, fallback failed too")
+            print("bitsloth: Failed to set dtype in config, fallback failed too")
 
 
 def add_dtype_kwargs(dtype, kwargs_dict=None):
@@ -122,7 +122,7 @@ def get_transformers_model_type(config, trust_remote_code=False):
     """Gets model_type from config file - can be PEFT or normal HF"""
     if config is None:
         raise RuntimeError(
-            f"Unsloth: No config file found - are you sure the `model_name` is correct?\n"
+            f"bitsloth: No config file found - are you sure the `model_name` is correct?\n"
             f"If you're using a model on your local device, confirm if the folder location exists.\n"
             f"If you're using a HuggingFace online model, check if it exists."
         )
@@ -171,13 +171,13 @@ def get_transformers_model_type(config, trust_remote_code=False):
         base_model_name_or_path = getattr(config, "base_model_name_or_path", None)
         if base_model_name_or_path is None:
             raise TypeError(
-                "Unsloth: adapter_config.json's `base_model_name_or_path` is None?"
+                "bitsloth: adapter_config.json's `base_model_name_or_path` is None?"
             )
         base_model_name_or_path = str(base_model_name_or_path)
         # Set model name for patching purposes
-        os.environ["UNSLOTH_MODEL_NAME"] = base_model_name_or_path.lower()
+        os.environ["bitsloth_MODEL_NAME"] = base_model_name_or_path.lower()
 
-        # Last resort use model name unsloth/gpt-oss-20b-unsloth-bnb-4bit
+        # Last resort use model name bitsloth/gpt-oss-20b-bitsloth-bnb-4bit
         if model_types is None:
             from transformers import AutoConfig
 
@@ -231,7 +231,7 @@ def get_transformers_model_type(config, trust_remote_code=False):
     pass
     if model_types is None:
         raise TypeError(
-            f"Unsloth: Cannot determine model type for config file: {str(config)}"
+            f"bitsloth: Cannot determine model type for config file: {str(config)}"
         )
     # Standardize model_type
     final_model_types = []
@@ -303,7 +303,7 @@ def fix_lora_auto_mapping(model):
         auto_mapping_dict = {
             "base_model_class": base_model_class.__name__,
             "parent_library": parent_library,
-            "unsloth_fixed": True,
+            "bitsloth_fixed": True,
         }
         if getattr(config, "auto_mapping", None) is None:
             config.auto_mapping = auto_mapping_dict
@@ -338,9 +338,9 @@ def get_auto_processor(name, **kwargs):
                 with open(processor_config, "r", encoding="utf-8") as f:
                     config = json.load(f)
                 processor_class = config["processor_class"]
-                # Strip _Unsloth_Patched_ prefix from old saves (issue #4085)
-                if processor_class.startswith("_Unsloth_Patched_"):
-                    processor_class = processor_class[len("_Unsloth_Patched_") :]
+                # Strip _bitsloth_Patched_ prefix from old saves (issue #4085)
+                if processor_class.startswith("_bitsloth_Patched_"):
+                    processor_class = processor_class[len("_bitsloth_Patched_") :]
                 model_type = reversal_map[processor_class]
                 break
             except:
@@ -368,7 +368,7 @@ def get_auto_processor(name, **kwargs):
         try:
             return AutoTokenizer.from_pretrained(name, **kwargs)
         except:
-            raise TypeError(f"Unsloth: Failed loading a AutoProcessor from `{name}`")
+            raise TypeError(f"bitsloth: Failed loading a AutoProcessor from `{name}`")
     pass
 
     # Make a temporary directory to copy all files
@@ -396,7 +396,7 @@ def get_auto_processor(name, **kwargs):
                 pass
     pass
 
-    # Fix _Unsloth_Patched_ prefix in copied config files (issue #4085)
+    # Fix _bitsloth_Patched_ prefix in copied config files (issue #4085)
     for cfg_name in [
         "processor_config.json",
         "preprocessor_config.json",
@@ -407,9 +407,9 @@ def get_auto_processor(name, **kwargs):
             try:
                 with open(cfg_path, "r", encoding="utf-8") as f:
                     cfg = json.load(f)
-                if cfg.get("processor_class", "").startswith("_Unsloth_Patched_"):
+                if cfg.get("processor_class", "").startswith("_bitsloth_Patched_"):
                     cfg["processor_class"] = cfg["processor_class"][
-                        len("_Unsloth_Patched_") :
+                        len("_bitsloth_Patched_") :
                     ]
                     with open(cfg_path, "w", encoding="utf-8") as f:
                         json.dump(cfg, f, indent=2, ensure_ascii=False)
@@ -432,7 +432,7 @@ def get_auto_processor(name, **kwargs):
         try:
             return AutoTokenizer.from_pretrained(name, **kwargs)
         except:
-            raise TypeError(f"Unsloth: Failed loading a AutoProcessor from `{name}`")
+            raise TypeError(f"bitsloth: Failed loading a AutoProcessor from `{name}`")
     return processor
 
 

@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -24,7 +24,7 @@ from torch.autograd import Function
 
 # Get compile location
 BITSLOTH_COMPILE_LOCATION = os.environ.get(
-    "BITSLOTH_COMPILE_LOCATION", "unsloth_compiled_cache"
+    "BITSLOTH_COMPILE_LOCATION", "bitsloth_compiled_cache"
 )
 
 
@@ -41,7 +41,7 @@ def _log_info(message: str):
 
 def install_to_cache(source_path, destination_filename=None):
     """
-    Copies a file to the unsloth_compiled_cache directory
+    Copies a file to the bitsloth_compiled_cache directory
     to ensure it is available for compiled modules.
     """
     compile_location = _get_compile_location()
@@ -80,7 +80,7 @@ def _load_cached_moe_utils_module():
         return None
 
     try:
-        module_name = "unsloth_cached_moe_utils"
+        module_name = "bitsloth_cached_moe_utils"
         module = sys.modules.get(module_name, None)
         if (
             module is not None
@@ -221,15 +221,15 @@ def _init_triton_allocator():
             return _PERSISTENT_BUFFER
 
         triton.set_allocator(persistent_alloc_fn)
-        triton._unsloth_allocator_set = True
+        triton._bitsloth_allocator_set = True
         _TRITON_ALLOCATOR_INITIALIZED = True
     except Exception:
         pass
 
 
 def _check_grouped_gemm_available():
-    """Check if Unsloth grouped GEMM kernels are available."""
-    if os.environ.get("UNSLOTH_DISABLE_MOE_TRITON", "0") == "1":
+    """Check if bitsloth grouped GEMM kernels are available."""
+    if os.environ.get("bitsloth_DISABLE_MOE_TRITON", "0") == "1":
         return False
 
     global _GROUPED_GEMM_AVAILABLE
@@ -237,7 +237,7 @@ def _check_grouped_gemm_available():
         return _GROUPED_GEMM_AVAILABLE
 
     try:
-        from unsloth.kernels.moe.grouped_gemm.interface import (
+        from bitsloth.kernels.moe.grouped_gemm.interface import (
             grouped_gemm,
             supports_tma,
         )
@@ -255,30 +255,30 @@ from functools import lru_cache
 @lru_cache(maxsize=1)
 def select_moe_backend():
     """
-    Selects the MoE backend based on UNSLOTH_MOE_BACKEND environment variable and availability.
-    Choices: "grouped_mm", "unsloth_triton", "native_torch".
+    Selects the MoE backend based on bitsloth_MOE_BACKEND environment variable and availability.
+    Choices: "grouped_mm", "bitsloth_triton", "native_torch".
     Default if unspecified: "grouped_mm".
     """
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
-    requested = os.environ.get("UNSLOTH_MOE_BACKEND")
+    requested = os.environ.get("bitsloth_MOE_BACKEND")
     if requested:
         if requested == "grouped_mm" and _check_torch_grouped_mm_supported():
             return "grouped_mm"
-        if requested == "unsloth_triton" and _check_grouped_gemm_available():
-            return "unsloth_triton"
+        if requested == "bitsloth_triton" and _check_grouped_gemm_available():
+            return "bitsloth_triton"
         if requested == "native_torch":
             return "native_torch"
         _log_info(
-            f"Unsloth: '{requested}' backend requested but is not available. Falling back to next available."
+            f"bitsloth: '{requested}' backend requested but is not available. Falling back to next available."
         )
 
     if _check_torch_grouped_mm_supported():
-        _log_info("Unsloth: Using MoE backend 'grouped_mm'")
+        _log_info("bitsloth: Using MoE backend 'grouped_mm'")
         return "grouped_mm"
     if _check_grouped_gemm_available():
-        _log_info("Unsloth: Using MoE backend 'unsloth_triton'")
-        return "unsloth_triton"
+        _log_info("bitsloth: Using MoE backend 'bitsloth_triton'")
+        return "bitsloth_triton"
     return "native_torch"
 
 
@@ -292,14 +292,14 @@ def forward_moe_backend(
     Dispatch MoE forward to the selected backend.
     Centralizes backend selection to keep model-specific patches minimal.
     """
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
     backend = select_moe_backend()
     if backend == "grouped_mm":
         return forward_native_grouped_mm(
             self, hidden_states, top_k_index, top_k_weights
         )
-    if backend == "unsloth_triton":
+    if backend == "bitsloth_triton":
         return forward_triton_grouped_gemm(
             self, hidden_states, top_k_index, top_k_weights
         )
@@ -316,7 +316,7 @@ def _get_routing_indices(selected_experts, num_experts):
         token_counts_by_expert: (num_experts,) token counts per expert
         gather_indices: (total_tokens,) indices for gathering tokens in expert order
     """
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
     flat_experts = selected_experts.view(-1)
 
@@ -389,7 +389,7 @@ def _extract_lora_from_wrapper(
     Returns:
         (first_weight, second_weight, scaling, num_experts) or None
     """
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
     try:
         if not hasattr(wrapper, "lora_A") or not hasattr(wrapper, "lora_B"):
@@ -421,7 +421,7 @@ def _extract_lora_from_wrapper(
             )
 
         # Check for model-specific LoRA extractor attached to the experts module
-        extractor_fn = getattr(experts_module, "_unsloth_lora_extractor_fn", None)
+        extractor_fn = getattr(experts_module, "_bitsloth_lora_extractor_fn", None)
 
         if extractor_fn is not None:
             return extractor_fn(wrapper, weight_A, weight_B, scaling, num_experts)
@@ -468,7 +468,7 @@ def _extract_lora_weights(
     Returns:
         (first_weight, second_weight, scaling) for (X @ first) @ second
     """
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
     # Set num_experts on param if provided, so _extract_lora_from_wrapper can use it
     if num_experts is not None and not hasattr(param, "num_experts"):
@@ -485,7 +485,7 @@ def _extract_lora_weights(
 
 def _get_base_weight(param):
     """Get base weight from potentially wrapped parameter or module."""
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
     # Recursively unwrap PEFT layers
     while hasattr(param, "base_layer"):
@@ -507,7 +507,7 @@ def _get_lora_wrapper_for_param(experts_module, param_name):
     Uses the explicit key stored in __dict__ if available.
     Does NOT lazily setup wrappers as that requires traversing logic not present here.
     """
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
     if hasattr(experts_module, f"{param_name}_lora_wrapper"):
         return getattr(experts_module, f"{param_name}_lora_wrapper")
@@ -551,7 +551,7 @@ def _apply_lora_grouped_mm(
         scaling: LoRA scaling factor
         grouped_mm_func: Function to use for grouped GEMM (default: native_moe_grouped_mm)
     """
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
     # 1. First Matmul (X @ B)
     # lora_B is (E, in_dim, R)
@@ -569,9 +569,9 @@ def _apply_lora_grouped_mm(
 def _should_use_separated_lora() -> bool:
     """
     Check if separated LoRA approach should be used (default: True).
-    Set UNSLOTH_MOE_LORA_MERGED=1 to use merged approach instead.
+    Set bitsloth_MOE_LORA_MERGED=1 to use merged approach instead.
     """
-    return os.environ.get("UNSLOTH_MOE_LORA_MERGED", "0") != "1"
+    return os.environ.get("bitsloth_MOE_LORA_MERGED", "0") != "1"
 
 
 # ============================================================================
@@ -617,7 +617,7 @@ def preprocess_weight(
     Returns:
         Weight tensor in (E, in_dim, out_dim) format for grouped_mm
     """
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
     if model_type and model_type in _WEIGHT_PREPROCESSORS:
         return _WEIGHT_PREPROCESSORS[model_type](weight, proj_type, hidden_dim)
@@ -650,7 +650,7 @@ def _is_moe_experts_module(module) -> bool:
     - gate_up_proj/down_proj pattern (Qwen3-MoE, Qwen3-VL-MoE, etc.)
     - w1/w2/w3 pattern (older MoE models)
     """
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
     import torch.nn as nn
 
@@ -694,7 +694,7 @@ def _patched_param_wrapper_forward(
     For non-MoE modules:
     - Falls back to original PEFT forward
     """
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
     # CRITICAL: Use self.base_layer for forward call (immediate parent)
     # NOT self.get_base_layer() which recursively traverses to deepest layer!
@@ -739,8 +739,8 @@ def _patched_param_wrapper_forward(
 
         if lora_data is not None and param_name:
             # Store LoRA data on the EXPERTS MODULE (not base_layer)
-            # e.g., _unsloth_lora_gate_up_proj or _unsloth_lora_down_proj
-            lora_attr = f"_unsloth_lora_{param_name}"
+            # e.g., _bitsloth_lora_gate_up_proj or _bitsloth_lora_down_proj
+            lora_attr = f"_bitsloth_lora_{param_name}"
             setattr(experts_module, lora_attr, lora_data)
 
         try:
@@ -750,7 +750,7 @@ def _patched_param_wrapper_forward(
         finally:
             # Clean up
             if param_name:
-                lora_attr = f"_unsloth_lora_{param_name}"
+                lora_attr = f"_bitsloth_lora_{param_name}"
                 if hasattr(experts_module, lora_attr):
                     delattr(experts_module, lora_attr)
 
@@ -766,7 +766,7 @@ def patch_param_wrapper_for_moe():
 
     This should be called after PEFT is imported.
     """
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
     global _original_param_wrapper_forward
 
@@ -803,14 +803,14 @@ def forward_native_grouped_mm(
     Uses torch._grouped_mm which is significantly faster than loop and works without Triton dependencies.
     Requires torch._grouped_mm support (verified via runtime check).
     """
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
     # Runtime safety check - defense in depth
     if not _check_torch_grouped_mm_supported():
         major, minor = torch.cuda.get_device_capability(torch.cuda.current_device())
         raise RuntimeError(
             f"torch._grouped_mm is not supported on this device (Compute Capability {major}.{minor}). "
-            f"Set UNSLOTH_MOE_BACKEND='unsloth_triton' or 'native_torch' to use a compatible backend."
+            f"Set bitsloth_MOE_BACKEND='bitsloth_triton' or 'native_torch' to use a compatible backend."
         )
 
     is_2d_input = hidden_states.dim() == 2
@@ -844,8 +844,8 @@ def forward_native_grouped_mm(
     gate_up_lora = None
 
     # Check for injected LoRA data from patched ParamWrapper (preferred path)
-    if getattr(self, "_unsloth_lora_gate_up_proj", None) is not None:
-        gate_up_lora = self._unsloth_lora_gate_up_proj[
+    if getattr(self, "_bitsloth_lora_gate_up_proj", None) is not None:
+        gate_up_lora = self._bitsloth_lora_gate_up_proj[
             :3
         ]  # (first_weight, second_weight, scaling)
     # Fallback: check parameter directly (for older wrapping patterns)
@@ -863,7 +863,7 @@ def forward_native_grouped_mm(
         gate_up_base = _get_base_weight(self.gate_up_proj)
 
         # Get model type for preprocessing (if registered)
-        model_type = getattr(self, "_unsloth_model_type", None)
+        model_type = getattr(self, "_bitsloth_model_type", None)
 
         # Handle different weight shapes using preprocessor
         # torch._grouped_mm backward requires weights to be contiguous; preprocessing may return a transposed view.
@@ -998,8 +998,8 @@ def forward_native_grouped_mm(
     down_lora = None
 
     # Check for injected LoRA data from patched ParamWrapper (preferred path)
-    if getattr(self, "_unsloth_lora_down_proj", None) is not None:
-        down_lora = self._unsloth_lora_down_proj[
+    if getattr(self, "_bitsloth_lora_down_proj", None) is not None:
+        down_lora = self._bitsloth_lora_down_proj[
             :3
         ]  # (first_weight, second_weight, scaling)
     # Fallback: check parameter directly (for older wrapping patterns)
@@ -1017,7 +1017,7 @@ def forward_native_grouped_mm(
         down_base = _get_base_weight(self.down_proj)
 
         # Get model type for preprocessing (if registered)
-        model_type = getattr(self, "_unsloth_model_type", None)
+        model_type = getattr(self, "_bitsloth_model_type", None)
 
         # Handle different weight shapes using preprocessor
         w2 = preprocess_weight(down_base, "down", hidden_dim, model_type)
@@ -1119,25 +1119,25 @@ def forward_triton_grouped_gemm(
     Grouped GEMM MoE forward pass using Triton kernels.
     Compatible with torch.compile (recommended mode="max-autotune" with cudagraph_mark_step_begin).
     """
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
     # Import grouped GEMM interface
-    from unsloth.kernels.moe.grouped_gemm.interface import grouped_gemm
+    from bitsloth.kernels.moe.grouped_gemm.interface import grouped_gemm
 
     # Import autotune cache
-    from unsloth.kernels.moe.autotune_cache import get_or_autotune_moe_kernels
+    from bitsloth.kernels.moe.autotune_cache import get_or_autotune_moe_kernels
 
     # Helper to check TMA support - assumes helper function or just check directly
     # In original: it was a cached closure. Here we can use _supports_tma() directly
 
     # nonlocal _MODEL_DIMS_AND_CONFIGS # We need a way to store this!
     # For now, let's attach it to self if possible, or use a global usage
-    # Attaching to self is cleaner: self._unsloth_moe_configs
+    # Attaching to self is cleaner: self._bitsloth_moe_configs
 
     # Create expert mask and find which experts have tokens
 
-    if not hasattr(self, "_unsloth_moe_configs"):
-        self._unsloth_moe_configs = None
+    if not hasattr(self, "_bitsloth_moe_configs"):
+        self._bitsloth_moe_configs = None
 
     use_separated_lora = _should_use_separated_lora()
 
@@ -1158,7 +1158,7 @@ def forward_triton_grouped_gemm(
     top_k = top_k_index.shape[1]
 
     # Cache model dimensions and kernel configs on first call
-    if self._unsloth_moe_configs is None:
+    if self._bitsloth_moe_configs is None:
         intermediate_dim = self.gate_up_proj.shape[1] // 2
 
         # Autotune first GEMM
@@ -1179,13 +1179,13 @@ def forward_triton_grouped_gemm(
             dtype=hidden_states.dtype,
         )
 
-        self._unsloth_moe_configs = (intermediate_dim, gemm1_configs, gemm2_configs)
+        self._bitsloth_moe_configs = (intermediate_dim, gemm1_configs, gemm2_configs)
 
         # Clear autotuning memory overhead
         torch.cuda.empty_cache()
 
     # Unpack cached configs
-    intermediate_dim, gemm1_configs, gemm2_configs = self._unsloth_moe_configs
+    intermediate_dim, gemm1_configs, gemm2_configs = self._bitsloth_moe_configs
 
     # Unpack specific kernel configs
     fwd_config_1, bwd_dX_config_1, bwd_dW_config_1 = gemm1_configs
@@ -1226,8 +1226,8 @@ def forward_triton_grouped_gemm(
     # Grouped GEMM 2: down projection
     # Prepare LoRA data
     down_lora = None
-    if getattr(self, "_unsloth_lora_down_proj", None) is not None:
-        down_lora = self._unsloth_lora_down_proj[:3]
+    if getattr(self, "_bitsloth_lora_down_proj", None) is not None:
+        down_lora = self._bitsloth_lora_down_proj[:3]
     elif (
         use_separated_lora
         and hasattr(self, "down_proj")
@@ -1303,7 +1303,7 @@ def forward_native_moe_loop(
     Loop-based MoE forward pass. Loops over experts that have tokens routed to them.
     Explicitly disabled for torch.compile to prevent graph breaks/recompilation issues with dynamic control flow.
     """
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
     final_hidden_states = torch.zeros_like(hidden_states)
 
     # Create expert mask and find which experts have tokens

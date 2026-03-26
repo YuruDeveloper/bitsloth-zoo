@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -100,11 +100,11 @@ if os.environ.get("BITSLOTH_COMPILE_DEBUG", "0") == "1":
 
 from importlib.util import find_spec
 
-# if find_spec("unsloth") is None:
-#     raise ImportError("Please install Unsloth via `pip install unsloth`!")
+# if find_spec("bitsloth") is None:
+#     raise ImportError("Please install bitsloth via `pip install bitsloth`!")
 if find_spec("torch") is None:
     raise ImportError(
-        "Unsloth: Pytorch is not installed. Go to https://pytorch.org/.\n"
+        "bitsloth: Pytorch is not installed. Go to https://pytorch.org/.\n"
         "We also have some installation instructions on our Github page."
     )
 
@@ -114,7 +114,7 @@ _ORIGINAL_PYTORCH_HIP_ALLOC_CONF = os.environ.get("PYTORCH_HIP_ALLOC_CONF")
 _HAS_ORIGINAL_PYTORCH_ALLOC_CONF = "PYTORCH_ALLOC_CONF" in os.environ
 
 # We support Pytorch 2
-# Fixes https://github.com/unslothai/unsloth/issues/38
+# Fixes https://github.com/bitslothai/bitsloth/issues/38
 from importlib.metadata import version as importlib_version
 
 torch_version_raw = str(importlib_version("torch"))
@@ -149,7 +149,7 @@ elif os.environ.get("BITSLOTH_VLLM_STANDBY", "0") == "1":
     ):
         if "expandable_segments:True" in os.environ.get(key, ""):
             warnings.warn(
-                "Unsloth: `BITSLOTH_VLLM_STANDBY` is on, but requires `expandable_segments` to be off. "
+                "bitsloth: `BITSLOTH_VLLM_STANDBY` is on, but requires `expandable_segments` to be off. "
                 "We will remove `expandable_segments`.",
                 stacklevel=2,
             )
@@ -197,7 +197,7 @@ def clean_expandable_segments_value(value):
 
 if major_torch < 2:
     raise ImportError(
-        "Unsloth only supports Pytorch 2 for now. Please update your Pytorch to 2.1.\n"
+        "bitsloth only supports Pytorch 2 for now. Please update your Pytorch to 2.1.\n"
         "We have some installation instructions on our Github page."
     )
 elif (major_torch == 2) and (minor_torch < 2):
@@ -329,14 +329,14 @@ del (
 )
 
 # if not ("BITSLOTH_IS_PRESENT" in os.environ):
-#     raise ImportError("Please install Unsloth via `pip install unsloth`!")
+#     raise ImportError("Please install bitsloth via `pip install bitsloth`!")
 
 try:
-    print("🦥 Unsloth: Will patch your computer to enable 2x faster free finetuning.")
+    print("🦥 bitsloth: Will patch your computer to enable 2x faster free finetuning.")
 except:
-    print("Unsloth: Will patch your computer to enable 2x faster free finetuning.")
+    print("bitsloth: Will patch your computer to enable 2x faster free finetuning.")
 
-# Log Unsloth-Zoo Utilities
+# Log bitsloth-Zoo Utilities
 os.environ["BITSLOTH_ZOO_IS_PRESENT"] = "1"
 
 from .temporary_patches import (

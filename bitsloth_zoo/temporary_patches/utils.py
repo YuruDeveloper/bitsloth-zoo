@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -49,7 +49,7 @@ except:
 from ..utils import Version
 from .common import (
     BITSLOTH_ENABLE_LOGGING,
-    UNSLOTH_COMPILE_DISABLE,
+    bitsloth_COMPILE_DISABLE,
     torch_compile_options,
     logger,
 )
@@ -94,7 +94,7 @@ def process_return(
         chosen_keys = allowed_keys & return_dict_keys
         return_dict = {key: return_dict[key] for key in chosen_keys}
         logger.warning_once(
-            f"Unsloth: Returning {output_class.__name__} changed return args.\n"
+            f"bitsloth: Returning {output_class.__name__} changed return args.\n"
             f"Previously we wanted {return_dict_keys}\n"
             f"Now we can only use  {allowed_keys}\n"
             f"These keys are gone: {return_dict_keys - allowed_keys}"
@@ -119,7 +119,7 @@ try:
     from transformers.processing_utils import Unpack
 
     assert type(Unpack) is type(t_Unpack), (
-        "Unsloth: Unpack type changed! Please file a bug report asap!"
+        "bitsloth: Unpack type changed! Please file a bug report asap!"
     )
 except ImportError as e:
     e = str(e)
@@ -134,7 +134,7 @@ except ImportError as e:
     elif "Unpack" not in e:
         raise Exception(e)
     raise RuntimeError(
-        f"Unsloth: Unpack has been moved! Other error = {str(e)}.\n"
+        f"bitsloth: Unpack has been moved! Other error = {str(e)}.\n"
         "Please file a bug report asap!"
     )
 except Exception as e:
@@ -180,14 +180,14 @@ try:
     from transformers.utils import TransformersKwargs
 
     assert type(TransformersKwargs) is t_TypedDictMeta, (
-        "Unsloth: TransformersKwargs type changed! Please file a bug report asap!"
+        "bitsloth: TransformersKwargs type changed! Please file a bug report asap!"
     )
 except ImportError as e:
     from transformers import __version__ as transformers_version
 
     if Version(transformers_version) >= Version("4.54.0.dev0"):
         raise RuntimeError(
-            f"Unsloth: TransformersKwargs has been moved! Other error = {str(e)}.\n"
+            f"bitsloth: TransformersKwargs has been moved! Other error = {str(e)}.\n"
             "Please file a bug report asap!"
         )
     else:
@@ -202,7 +202,7 @@ try:
     from transformers.modeling_flash_attention_utils import FlashAttentionKwargs
 
     assert type(FlashAttentionKwargs) is t_TypedDictMeta, (
-        "Unsloth: FlashAttentionKwargs type changed! Please file a bug report asap!"
+        "bitsloth: FlashAttentionKwargs type changed! Please file a bug report asap!"
     )
 except:
     # No more FlashAttentionKwargs can ignore!
@@ -216,7 +216,7 @@ try:
     from transformers.utils import LossKwargs
 
     assert type(LossKwargs) is t_TypedDictMeta, (
-        "Unsloth: LossKwargs type changed! Please file a bug report asap!"
+        "bitsloth: LossKwargs type changed! Please file a bug report asap!"
     )
     if FlashAttentionKwargs != t_TypedDictMeta:
 
@@ -226,7 +226,7 @@ except:
     KwargsForCausalLM = TransformersKwargs
     if KwargsForCausalLM == t_TypedDictMeta:
         logger.error(
-            "Unsloth: KwargsForCausalLM cannot be inherited from "
+            "bitsloth: KwargsForCausalLM cannot be inherited from "
             f"TransformersKwargs since it's of type = {type(TransformersKwargs)}"
         )
 pass
@@ -411,7 +411,7 @@ def get_function_fingerprint(func: Callable) -> List[Dict[str, Any]]:
     try:
         signature = inspect.signature(func)
     except (ValueError, TypeError) as e:
-        raise ValueError(f"Unsloth: Cannot inspect function signature: {e}")
+        raise ValueError(f"bitsloth: Cannot inspect function signature: {e}")
     fingerprint = []
     signature_parameters = signature.parameters.values()
 
@@ -636,7 +636,7 @@ def patch_function(
     if not hasattr(target_obj, attr_name):
         if BITSLOTH_ENABLE_LOGGING:
             logger.error(
-                f"Unsloth: Attribute '{attr_name}' not found on {target_obj.__name__}"
+                f"bitsloth: Attribute '{attr_name}' not found on {target_obj.__name__}"
             )
         return False
 
@@ -646,7 +646,7 @@ def patch_function(
     if (
         fullgraph is not None
         and type(fullgraph) is bool
-        and not UNSLOTH_COMPILE_DISABLE
+        and not bitsloth_COMPILE_DISABLE
     ):
         # Get wrapped function if already compiled
         if hasattr(new_func, "get_compiler_config"):
@@ -666,7 +666,7 @@ def patch_function(
         unique_name = _get_unique_storage_name(target_obj, attr_name)
         setattr(target_obj, unique_name, original_func)
         # if BITSLOTH_ENABLE_LOGGING:
-        #     logger.info(f"Unsloth: Stored original as {unique_name}")
+        #     logger.info(f"bitsloth: Stored original as {unique_name}")
     pass
 
     if not force:
@@ -674,19 +674,19 @@ def patch_function(
         if not is_safe:
             if BITSLOTH_ENABLE_LOGGING:
                 logger.error(
-                    f"Unsloth: Skipped {target_obj.__name__}.{attr_name}\nReason: {reason}"
+                    f"bitsloth: Skipped {target_obj.__name__}.{attr_name}\nReason: {reason}"
                 )
             return False
     pass
     try:
         setattr(target_obj, attr_name, new_func)
         if BITSLOTH_ENABLE_LOGGING:
-            logger.info(f"Unsloth: Patched {target_obj.__name__}.{attr_name}.")
+            logger.info(f"bitsloth: Patched {target_obj.__name__}.{attr_name}.")
         return True
     except Exception as e:
         if BITSLOTH_ENABLE_LOGGING:
             logger.error(
-                f"Unsloth: Failed to patch {target_obj.__name__}.{attr_name}: {e}"
+                f"bitsloth: Failed to patch {target_obj.__name__}.{attr_name}: {e}"
             )
         return False
     pass
@@ -709,7 +709,7 @@ def patch_function_past_key_values(
     if not hasattr(target_obj, attr_name):
         if BITSLOTH_ENABLE_LOGGING:
             logger.error(
-                f"Unsloth: Attribute '{attr_name}' not found on {target_obj.__name__}"
+                f"bitsloth: Attribute '{attr_name}' not found on {target_obj.__name__}"
             )
         return False
 
@@ -717,7 +717,7 @@ def patch_function_past_key_values(
     try:
         old_keys = inspect.signature(original_func).parameters.keys()
     except:
-        logger.error(f"Unsloth: Cannot inspect {target_obj.__name__}")
+        logger.error(f"bitsloth: Cannot inspect {target_obj.__name__}")
         return False
     success = False
     error = ""
@@ -751,7 +751,7 @@ def patch_function_past_key_values(
                     continue
     if not success and BITSLOTH_ENABLE_LOGGING:
         logger.error(
-            f"Unsloth: Failed to patch {target_obj.__name__}.{attr_name}: {error}"
+            f"bitsloth: Failed to patch {target_obj.__name__}.{attr_name}: {error}"
         )
     return success
 
@@ -787,7 +787,7 @@ def patch_multiple(
 
         if fail_fast and not success:
             if BITSLOTH_ENABLE_LOGGING:
-                logger.error(f"Unsloth: Stopping patch process due to failure on {key}")
+                logger.error(f"bitsloth: Stopping patch process due to failure on {key}")
             break
 
     return results
@@ -808,7 +808,7 @@ def restore_original(
     if not hasattr(target_obj, unique_name):
         if BITSLOTH_ENABLE_LOGGING:
             logger.error(
-                f"Unsloth: No stored original found for {attr_name} (looked for {unique_name})"
+                f"bitsloth: No stored original found for {attr_name} (looked for {unique_name})"
             )
         return False
 
@@ -817,11 +817,11 @@ def restore_original(
         setattr(target_obj, attr_name, original_func)
         delattr(target_obj, unique_name)  # Clean up
         if BITSLOTH_ENABLE_LOGGING:
-            logger.info(f"Unsloth: Restored original {attr_name}")
+            logger.info(f"bitsloth: Restored original {attr_name}")
         return True
     except Exception as e:
         if BITSLOTH_ENABLE_LOGGING:
-            logger.error(f"Unsloth: Failed to restore {attr_name}: {e}")
+            logger.error(f"bitsloth: Failed to restore {attr_name}: {e}")
         return False
 
 

@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -72,7 +72,7 @@ class MoeExperts4bit(nn.Module):
 
     NOTE: BNB 4-bit MoE uses loop-based forward (each expert processed individually).
     For maximum throughput, consider using grouped_mm backend with native bf16 weights.
-    Set UNSLOTH_MOE_BACKEND=grouped_mm environment variable.
+    Set bitsloth_MOE_BACKEND=grouped_mm environment variable.
     """
 
     _warned_loop_based = False
@@ -288,7 +288,7 @@ class MoeExperts4bit(nn.Module):
             if BITSLOTH_ENABLE_LOGGING and not MoeExperts4bit._warned_loop_based:
                 MoeExperts4bit._warned_loop_based = True
                 logger.warning(
-                    "Unsloth: Using BNB 4-bit MoE with loop-based forward. "
+                    "bitsloth: Using BNB 4-bit MoE with loop-based forward. "
                     "For higher throughput, consider using grouped_mm backend with bf16 model."
                 )
 
@@ -483,7 +483,7 @@ def replace_with_bnb_moe_experts(
 
             if BITSLOTH_ENABLE_LOGGING:
                 logger.info(
-                    f"Unsloth: Prepared {module_name}.experts for BNB 4-bit quantization "
+                    f"bitsloth: Prepared {module_name}.experts for BNB 4-bit quantization "
                     f"({num_experts} experts, hidden={hidden_dim}, intermediate={intermediate_dim})"
                 )
 
@@ -523,7 +523,7 @@ def quantize_moe_experts_inplace(model: nn.Module, verbose: bool = True) -> int:
             compute_dtype = experts.gate_up_proj.dtype
 
             if verbose:
-                print(f"Unsloth: Quantizing {name}.experts to 4-bit...")
+                print(f"bitsloth: Quantizing {name}.experts to 4-bit...")
 
             # Create new quantized module and copy weights
             new_experts = quantized_cls(
@@ -544,7 +544,7 @@ def quantize_moe_experts_inplace(model: nn.Module, verbose: bool = True) -> int:
             count += 1
 
     if verbose and count > 0:
-        print(f"Unsloth: Quantized {count} MoE expert modules to 4-bit.")
+        print(f"bitsloth: Quantized {count} MoE expert modules to 4-bit.")
 
     return count
 
@@ -571,7 +571,7 @@ def post_quantize_moe_experts(
         return model
 
     if verbose:
-        print("Unsloth: Quantizing MoE experts to 4-bit...")
+        print("bitsloth: Quantizing MoE experts to 4-bit...")
 
     count = quantize_moe_experts_inplace(model, verbose=verbose)
 

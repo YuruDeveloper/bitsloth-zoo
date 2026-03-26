@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -748,7 +748,7 @@ def execute_with_time_limit(
         raise ValueError("seconds must be > 0")
     if start_method not in _VALID_START_METHODS:
         raise ValueError(
-            f"Unsloth: start_method must be one of {sorted(_VALID_START_METHODS)}, got {start_method!r}"
+            f"bitsloth: start_method must be one of {sorted(_VALID_START_METHODS)}, got {start_method!r}"
         )
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
@@ -921,7 +921,7 @@ def launch_openenv(
         # Port ID must be less than uint16_MAX
         port = random.randint(9000, 65535-1)
         localhost = f"http://localhost:{port}"
-        print(f"Unsloth: Creating new OpenEnv process at port = {port}", end = "")
+        print(f"bitsloth: Creating new OpenEnv process at port = {port}", end = "")
         openenv_process = subprocess.Popen(
             [sys.executable, "-m", "uvicorn", server, "--host", "0.0.0.0", "--port", str(port)],
             env = environment,
@@ -938,14 +938,14 @@ def launch_openenv(
                 print(".", end = "")
             wait_trials += 1
             if wait_trials == 6000:
-                raise TimeoutError("Unsloth: We tried launching a new OpenEnv Localhost for 60 seconds, but we still failed :(")
+                raise TimeoutError("bitsloth: We tried launching a new OpenEnv Localhost for 60 seconds, but we still failed :(")
         print()
         openenv_process = openenv_class(base_url = localhost)
         openenv_process = check_openenv_works(openenv_process)
         if openenv_process is not None: break
         trials += 1
         if trials == 30:
-            raise TimeoutError("Unsloth: We tried launching a new OpenEnv process 30 times, but we still failed :(")
+            raise TimeoutError("bitsloth: We tried launching a new OpenEnv process 30 times, but we still failed :(")
     if openenv_process is not None:
         return port, openenv_process
 pass

@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -36,7 +36,7 @@ from .utils import (
 )
 import inspect
 
-_UNSLOTH_FLEX_ATTENTION_DISABLED = os.environ.get("UNSLOTH_ENABLE_FLEX_ATTENTION", "1") == "0"
+_bitsloth_FLEX_ATTENTION_DISABLED = os.environ.get("bitsloth_ENABLE_FLEX_ATTENTION", "1") == "0"
 
 
 def patch_Gemma3Processor():
@@ -179,7 +179,7 @@ TEMPORARY_PATCHES.append(patch_Gemma3Processor)
 
 
 def patch_Gemma3ForConditionalGeneration_causal_mask():
-    if os.environ.get("UNSLOTH_FORCE_FLOAT32", "0") == "0": return
+    if os.environ.get("bitsloth_FORCE_FLOAT32", "0") == "0": return
     try:
         import transformers.models.gemma3.modeling_gemma3
         transformers.models.gemma3.modeling_gemma3.Gemma3Model
@@ -265,7 +265,7 @@ TEMPORARY_PATCHES.append(patch_Gemma3ForConditionalGeneration_causal_mask)
 
 
 def patch_Gemma3TextScaledWordEmbedding():
-    if os.environ.get("UNSLOTH_FORCE_FLOAT32", "0") == "0": return
+    if os.environ.get("bitsloth_FORCE_FLOAT32", "0") == "0": return
     try:
         import transformers.models.gemma3.modeling_gemma3
         transformers.models.gemma3.modeling_gemma3.Gemma3TextScaledWordEmbedding
@@ -286,7 +286,7 @@ TEMPORARY_PATCHES.append(patch_Gemma3TextScaledWordEmbedding)
 
 
 def patch_Gemma3RMSNorm():
-    if os.environ.get("UNSLOTH_FORCE_FLOAT32", "0") == "0": return
+    if os.environ.get("bitsloth_FORCE_FLOAT32", "0") == "0": return
     try:
         import transformers.models.gemma3.modeling_gemma3
         transformers.models.gemma3.modeling_gemma3.Gemma3RMSNorm
@@ -299,7 +299,7 @@ def patch_Gemma3RMSNorm():
         variance = x_fp32.pow(2).mean(-1, keepdim=True)
         hidden_states_fp32 = x_fp32 * torch.rsqrt(variance + self.eps)
 
-        # self.weight is bf16 (from vision.py loading if UNSLOTH_FORCE_FLOAT32="1")
+        # self.weight is bf16 (from vision.py loading if bitsloth_FORCE_FLOAT32="1")
         # So, cast self.weight to fp32 for the (1.0 + weight) operation
         output_fp32 = hidden_states_fp32 * (1.0 + self.weight.to(torch.float32))
 
@@ -316,7 +316,7 @@ TEMPORARY_PATCHES.append(patch_Gemma3RMSNorm)
 
 
 def patch_Gemma3MLP():
-    if os.environ.get("UNSLOTH_FORCE_FLOAT32", "0") == "0": return
+    if os.environ.get("bitsloth_FORCE_FLOAT32", "0") == "0": return
     try:
         import transformers.models.gemma3.modeling_gemma3
         transformers.models.gemma3.modeling_gemma3.Gemma3MLP
@@ -344,7 +344,7 @@ TEMPORARY_PATCHES.append(patch_Gemma3MLP)
 
 
 def patch_Gemma3Attention():
-    if os.environ.get("UNSLOTH_FORCE_FLOAT32", "0") == "0": return
+    if os.environ.get("bitsloth_FORCE_FLOAT32", "0") == "0": return
     try:
         import transformers.models.gemma3.modeling_gemma3
         transformers.models.gemma3.modeling_gemma3.Gemma3Attention
@@ -496,7 +496,7 @@ def patch_Gemma3Attention():
         """
         # output_attentions = kwargs.get("output_attentions", False)
         attn_impl = getattr(self.config, "_attn_implementation", "sdpa")
-        if _UNSLOTH_FLEX_ATTENTION_DISABLED:
+        if _bitsloth_FLEX_ATTENTION_DISABLED:
             attn_impl = "sdpa"
         if attn_impl == "flex_attention":
             attention_interface = ALL_ATTENTION_FUNCTIONS[attn_impl]
@@ -576,7 +576,7 @@ TEMPORARY_PATCHES.append(patch_Gemma3Attention)
 
 def patch_Gemma3RMSNorm_generic():
     # Must do this since torch.compile cannot trace through def prepare for q_norm, k_norm
-    if os.environ.get("UNSLOTH_FORCE_FLOAT32", "0") == "1": return
+    if os.environ.get("bitsloth_FORCE_FLOAT32", "0") == "1": return
     try:
         import transformers.models.gemma3.modeling_gemma3
         transformers.models.gemma3.modeling_gemma3.Gemma3RMSNorm
@@ -597,7 +597,7 @@ TEMPORARY_PATCHES.append(patch_Gemma3RMSNorm_generic)
 
 def patch_Gemma3Attention_generic():
     # Non float16 forced also has some benefits
-    if os.environ.get("UNSLOTH_FORCE_FLOAT32", "0") == "1": return
+    if os.environ.get("bitsloth_FORCE_FLOAT32", "0") == "1": return
     try:
         import transformers.models.gemma3.modeling_gemma3
         transformers.models.gemma3.modeling_gemma3.Gemma3Attention
@@ -751,7 +751,7 @@ def patch_Gemma3Attention_generic():
         """
         # output_attentions = kwargs.get("output_attentions", False)
         attn_impl = getattr(self.config, "_attn_implementation", "sdpa")
-        if _UNSLOTH_FLEX_ATTENTION_DISABLED:
+        if _bitsloth_FLEX_ATTENTION_DISABLED:
             attn_impl = "sdpa"
         if attn_impl == "flex_attention":
             attention_interface = ALL_ATTENTION_FUNCTIONS[attn_impl]

@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -103,8 +103,8 @@ def old_flex_attention_with_sink(
     absolute positioning will fail.
     """
     if not self_attn.training:
-        raise NotImplementedError("Unsloth: This version of flex attention only works for training")
-    assert getattr(self_attn, "sinks", None) is not None, "Unsloth: self_attn must have sinks"
+        raise NotImplementedError("bitsloth: This version of flex attention only works for training")
+    assert getattr(self_attn, "sinks", None) is not None, "bitsloth: self_attn must have sinks"
     sink_weights = self_attn.sinks
     enable_gqa = getattr(self_attn, "num_key_value_groups", 1) != 1
     scale = getattr(self_attn, "scaling", None) or getattr(self_attn, "scale", None) or scale
@@ -171,7 +171,7 @@ def flex_attention_with_sink(
 
     [WARNING] has higher error than old_flex_attention_with_sink, but works for inference
     """
-    assert getattr(self_attn, "sinks", None) is not None, "Unsloth: self_attn must have sinks"
+    assert getattr(self_attn, "sinks", None) is not None, "bitsloth: self_attn must have sinks"
     sink_weights = self_attn.sinks
     enable_gqa = getattr(self_attn, "num_key_value_groups", 1) != 1
     scale = getattr(self_attn, "scaling", None) or getattr(self_attn, "scale", None) or scale
@@ -196,7 +196,7 @@ def flex_attention_with_sink(
             else:
                 # Consider left padding as well for prefill
                 assert attention_mask is not None
-                assert attention_mask.dim() == 2, f"Unsloth: Attention_mask has dim = {attention_mask.dim()}"
+                assert attention_mask.dim() == 2, f"bitsloth: Attention_mask has dim = {attention_mask.dim()}"
                 # We must account for left padding
                 padding_start_idx = attention_mask.argmax(1).to(query.device)
                 do_padding = torch.arange(max(qlen_Q, qlen_KV), device = query.device).repeat((bsz, 1)) < padding_start_idx.unsqueeze(0).T
@@ -270,7 +270,7 @@ def flex_attention_with_sink_decoding(
     value,
     scale = None,
 ):
-    assert getattr(self_attn, "sinks", None) is not None, "Unsloth: self_attn must have sinks"
+    assert getattr(self_attn, "sinks", None) is not None, "bitsloth: self_attn must have sinks"
     enable_gqa = getattr(self_attn, "num_key_value_groups", 1) != 1
     scale = getattr(self_attn, "scaling", None) or getattr(self_attn, "scale", None) or scale
     block_mask = self_attn._flex_attention_cache(key)

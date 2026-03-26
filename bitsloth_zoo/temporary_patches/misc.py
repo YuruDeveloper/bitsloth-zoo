@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -71,7 +71,7 @@ def patch_tokenizer_convert_added_tokens():
         return raise_error("PreTrainedTokenizerBase", e)
 
     original_convert_added_tokens = PreTrainedTokenizerBase.convert_added_tokens
-    if hasattr(original_convert_added_tokens, "_unsloth_patched"):
+    if hasattr(original_convert_added_tokens, "_bitsloth_patched"):
         return
 
     @classmethod
@@ -83,7 +83,7 @@ def patch_tokenizer_convert_added_tokens():
             cls, obj, save=save, add_type_field=add_type_field
         )
 
-    patched_convert_added_tokens._unsloth_patched = True
+    patched_convert_added_tokens._bitsloth_patched = True
     PreTrainedTokenizerBase.convert_added_tokens = patched_convert_added_tokens
 
 
@@ -101,7 +101,7 @@ def patch_tokenizer_extra_special_tokens():
         return raise_error("PreTrainedTokenizerBase", e)
 
     original_init = PreTrainedTokenizerBase.__init__
-    if hasattr(original_init, "_unsloth_extra_special_tokens_patched"):
+    if hasattr(original_init, "_bitsloth_extra_special_tokens_patched"):
         return
 
     def patched_init(self, **kwargs):
@@ -113,7 +113,7 @@ def patch_tokenizer_extra_special_tokens():
             kwargs["extra_special_tokens"] = {}
         return original_init(self, **kwargs)
 
-    patched_init._unsloth_extra_special_tokens_patched = True
+    patched_init._bitsloth_extra_special_tokens_patched = True
     PreTrainedTokenizerBase.__init__ = patched_init
 
 
@@ -523,7 +523,7 @@ TEMPORARY_PATCHES.append(patch_CsmForConditionalGeneration_forward)
 
 
 def patch_transformers_masks():
-    if os.environ.get("UNSLOTH_COMPILE_DISABLE", "0") == "1":
+    if os.environ.get("bitsloth_COMPILE_DISABLE", "0") == "1":
         return
     try:
         import transformers.masking_utils as masking_utils
@@ -531,7 +531,7 @@ def patch_transformers_masks():
     except Exception as e:
         return raise_error("transformers.masking_utils", e)
 
-    if hasattr(masking_utils, "__unsloth_mask_patch__"):
+    if hasattr(masking_utils, "__bitsloth_mask_patch__"):
         return
 
     try:
@@ -563,12 +563,12 @@ def patch_transformers_masks():
 
     original_create_causal_mask = getattr(
         masking_utils,
-        "_unsloth_original_create_causal_mask",
+        "_bitsloth_original_create_causal_mask",
         masking_utils.create_causal_mask,
     )
     original_create_sliding_window_causal_mask = getattr(
         masking_utils,
-        "_unsloth_original_create_sliding_window_causal_mask",
+        "_bitsloth_original_create_sliding_window_causal_mask",
         masking_utils.create_sliding_window_causal_mask,
     )
 
@@ -597,8 +597,8 @@ def patch_transformers_masks():
 
     pass
 
-    masking_utils._unsloth_original_create_causal_mask = original_create_causal_mask
-    masking_utils._unsloth_original_create_sliding_window_causal_mask = (
+    masking_utils._bitsloth_original_create_causal_mask = original_create_causal_mask
+    masking_utils._bitsloth_original_create_sliding_window_causal_mask = (
         original_create_sliding_window_causal_mask
     )
     masking_utils.create_causal_mask = wrap(compiled_create_causal_mask)
@@ -609,7 +609,7 @@ def patch_transformers_masks():
         masking_utils.create_masks_for_generate
     )
     generation_utils.create_masks_for_generate = masking_utils.create_masks_for_generate
-    masking_utils.__unsloth_mask_patch__ = True
+    masking_utils.__bitsloth_mask_patch__ = True
 
 
 pass
@@ -836,7 +836,7 @@ def patch_causal_conv1d_cuda_probe():
     pass
 
     print(
-        "Unsloth: causal_conv1d CUDA kernels not compatible with this GPU. "
+        "bitsloth: causal_conv1d CUDA kernels not compatible with this GPU. "
         "Using PyTorch slow path for Mamba models."
     )
 
@@ -1256,7 +1256,7 @@ TEMPORARY_PATCHES.append(patch_MllamaVisionEncoderLayer)
 
 # Patch Siglip for forced float32 / float16 only
 def patch_SiglipEncoderLayer():
-    if os.environ.get("UNSLOTH_FORCE_FLOAT32", "0") == "0":
+    if os.environ.get("bitsloth_FORCE_FLOAT32", "0") == "0":
         return
     try:
         import transformers.models.siglip.modeling_siglip
@@ -1335,7 +1335,7 @@ def patch_Lfm2VlMultiModalProjector():
         return
 
     # Already patched or already has conditional logic (transformers >= 5.0.0)
-    if hasattr(Projector, "_unsloth_patched") or "use_layer_norm" in (
+    if hasattr(Projector, "_bitsloth_patched") or "use_layer_norm" in (
         getattr(Projector.__init__, "__code__", None)
         and Projector.__init__.__code__.co_varnames
         or ()
@@ -1364,7 +1364,7 @@ def patch_Lfm2VlMultiModalProjector():
 
     Projector.__init__ = patched_init
     Projector.forward = patched_forward
-    Projector._unsloth_patched = True
+    Projector._bitsloth_patched = True
 
 
 pass
@@ -1385,7 +1385,7 @@ def patch_peft_dispatch_bnb_4bit():
     except (ImportError, AttributeError):
         return
 
-    if hasattr(original_dispatch, "_unsloth_patched"):
+    if hasattr(original_dispatch, "_bitsloth_patched"):
         return
 
     def safe_dispatch_bnb_4bit(target, adapter_name, **kwargs):
@@ -1405,7 +1405,7 @@ def patch_peft_dispatch_bnb_4bit():
                 return original_dispatch(target, adapter_name, **kwargs)
             raise
 
-    safe_dispatch_bnb_4bit._unsloth_patched = True
+    safe_dispatch_bnb_4bit._bitsloth_patched = True
     peft_bnb.dispatch_bnb_4bit = safe_dispatch_bnb_4bit
 
 
@@ -1430,7 +1430,7 @@ def patch_trl_push_to_hub_token():
         from transformers import TrainingArguments
 
         _original_to_dict = TrainingArguments.to_dict
-        if getattr(_original_to_dict, "_unsloth_patched", False):
+        if getattr(_original_to_dict, "_bitsloth_patched", False):
             return
 
         def _patched_to_dict(self):
@@ -1439,7 +1439,7 @@ def patch_trl_push_to_hub_token():
                 d["push_to_hub_token"] = None
             return d
 
-        _patched_to_dict._unsloth_patched = True
+        _patched_to_dict._bitsloth_patched = True
         TrainingArguments.to_dict = _patched_to_dict
     except Exception:
         pass
@@ -1510,7 +1510,7 @@ def patch_vllm_safe_apply_chat_template():
         _original_safe_apply = getattr(hf_mod, "safe_apply_chat_template", None)
         if _original_safe_apply is None:
             return
-        if getattr(_original_safe_apply, "_unsloth_patched", False):
+        if getattr(_original_safe_apply, "_bitsloth_patched", False):
             return
 
         def _patched_safe_apply(
@@ -1535,7 +1535,7 @@ def patch_vllm_safe_apply_chat_template():
                 **kwargs,
             )
 
-        _patched_safe_apply._unsloth_patched = True
+        _patched_safe_apply._bitsloth_patched = True
         hf_mod.safe_apply_chat_template = _patched_safe_apply
     except Exception:
         pass

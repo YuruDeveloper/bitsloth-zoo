@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -151,7 +151,7 @@ def _find_common_token_ids(component, tokenizer, force_match = False):
     substring = _longest_common_sublist([x + [0] for x in all_input_ids])
 
     # If substring is simply [0], this might be just the original single token
-    # Fixes https://github.com/unslothai/unsloth/issues/1290
+    # Fixes https://github.com/bitslothai/bitsloth/issues/1290
     # Mistral [INST] [/INST] singular tokens breaks since we output [0] but we need [3] [4]
     if substring == [0] and len(all_input_ids[0]) == 1:
         single_token = all_input_ids[0][0]
@@ -195,25 +195,25 @@ def train_on_responses_only(
     Trains only on responses and not on the instruction by masking out
     the labels with -100 for the instruction part.
     """
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     if tokenizer is None and trainer is not None:
         tokenizer = trainer.processing_class if hasattr(trainer, "processing_class") else trainer.tokenizer
     # Get non vision tokenizer
     if hasattr(tokenizer, "image_processor") or hasattr(tokenizer, "tokenizer"):
         tokenizer = tokenizer.tokenizer
-    if  not hasattr(tokenizer, "_unsloth_input_part") or \
-        not hasattr(tokenizer, "_unsloth_output_part"):
+    if  not hasattr(tokenizer, "_bitsloth_input_part") or \
+        not hasattr(tokenizer, "_bitsloth_output_part"):
         
         if instruction_part is None or response_part is None:
-            raise ValueError("Unsloth: instruction_part and response_part must be given!")
+            raise ValueError("bitsloth: instruction_part and response_part must be given!")
         pass
     elif (instruction_part is not None or response_part is not None) and \
-        (hasattr(tokenizer, "_unsloth_input_part") or hasattr(tokenizer, "_unsloth_output_part")):
+        (hasattr(tokenizer, "_bitsloth_input_part") or hasattr(tokenizer, "_bitsloth_output_part")):
 
-        raise ValueError("Unsloth: Your tokenizer already has instruction and response parts set - do not give custom ones!")
+        raise ValueError("bitsloth: Your tokenizer already has instruction and response parts set - do not give custom ones!")
     else:
-        instruction_part = tokenizer._unsloth_input_part
-        response_part    = tokenizer._unsloth_output_part
+        instruction_part = tokenizer._bitsloth_input_part
+        response_part    = tokenizer._bitsloth_output_part
     pass
 
     # Get most common tokens since tokenizers can tokenize stuff differently!
@@ -395,7 +395,7 @@ def train_on_responses_only(
         n_removed = n_before - n_after
         if n_removed > 0:
             print(
-                f"Unsloth: Removed {n_removed} out of {n_before} samples from {dataset_name} "
+                f"bitsloth: Removed {n_removed} out of {n_before} samples from {dataset_name} "
                 f"where all labels were -100 (no response found after truncation). "
                 f"This prevents NaN loss during training."
             )
@@ -404,7 +404,7 @@ def train_on_responses_only(
 
     if hasattr(trainer, "train_dataset") and trainer.train_dataset is not None:
         if not hasattr(trainer.train_dataset, "map"):
-            raise TypeError("Unsloth: train_on_responses_only does not work on lists!")
+            raise TypeError("bitsloth: train_on_responses_only does not work on lists!")
         trainer.train_dataset = _maybe_tokenize_dataset(trainer.train_dataset)
         if isinstance(trainer.train_dataset, IterableDataset):
             trainer.train_dataset = trainer.train_dataset.map(_train_on_responses_only, batch_size = trainer.train_dataset._ex_iterable.batch_size, batched = True)
@@ -418,7 +418,7 @@ def train_on_responses_only(
         if type(trainer.eval_dataset) is dict:
             for key, value in trainer.eval_dataset.items():
                 if not hasattr(value, "map"):
-                    raise TypeError("Unsloth: train_on_responses_only does not work on lists!")
+                    raise TypeError("bitsloth: train_on_responses_only does not work on lists!")
                 value = _maybe_tokenize_dataset(value)
                 if isinstance(value, IterableDataset):
                     trainer.eval_dataset[key] = value.map(_train_on_responses_only, batch_size = value._ex_iterable.batch_size, batched = True)
@@ -427,7 +427,7 @@ def train_on_responses_only(
                 trainer.eval_dataset[key] = _filter_fully_masked(trainer.eval_dataset[key], f"eval_dataset[{key}]")
         else:
             if not hasattr(trainer.eval_dataset, "map"):
-                raise TypeError("Unsloth: train_on_responses_only does not work on lists!")
+                raise TypeError("bitsloth: train_on_responses_only does not work on lists!")
             trainer.eval_dataset = _maybe_tokenize_dataset(trainer.eval_dataset)
             if isinstance(trainer.eval_dataset, IterableDataset):
                 trainer.eval_dataset = trainer.eval_dataset.map(_train_on_responses_only, batch_size = trainer.eval_dataset._ex_iterable.batch_size, batched = True)
@@ -494,7 +494,7 @@ def standardize_data_formats(
         for message in example["conversations"]:
             for key, value in message.items():
                 if type(value) is not str:
-                    raise RuntimeError("Unsloth: Cannot standardize non text datasets!")
+                    raise RuntimeError("bitsloth: Cannot standardize non text datasets!")
                 uniques[key].append(value)
     pass
 
@@ -520,7 +520,7 @@ def standardize_data_formats(
     leftover_aliases = (all_aliases | roles) - all_aliases
     if len(leftover_aliases) != 0:
         raise TypeError(
-            f"Unsloth: {list(leftover_aliases)} are not in aliases. Please update aliases."
+            f"bitsloth: {list(leftover_aliases)} are not in aliases. Please update aliases."
         )
     pass
 
@@ -566,7 +566,7 @@ def standardize_data_formats(
                 else:
                     num_proc = min(num_proc, int(memory_gb_left))
         dataset_map_kwargs['num_proc'] = num_proc
-        dataset_map_kwargs['desc'] = "Unsloth: Standardizing formats"
+        dataset_map_kwargs['desc'] = "bitsloth: Standardizing formats"
 
     return dataset.map(
         _standardize_dataset,
@@ -592,7 +592,7 @@ def sft_prepare_dataset(
     formatting_func: Optional[Callable[[dict], str]],
     dataset_name: str,
 ) -> Union[Dataset, IterableDataset]:
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     try:
         if isinstance(dataset, ConstantLengthDataset): return dataset
     except:
@@ -610,7 +610,7 @@ def sft_prepare_dataset(
     _needs_token_type_ids = False
     # Split to avoid compiler substring match on masking_utils names
     _ccm = 'create_' + 'causal_mask_mapping'
-    _model = getattr(self, '_unsloth_model_ref', None) or getattr(self, 'model', None)
+    _model = getattr(self, '_bitsloth_model_ref', None) or getattr(self, 'model', None)
     if _model is not None:
         for _m in (_model, getattr(_model, 'model', None)):
             if _m is None: continue
@@ -637,7 +637,7 @@ def sft_prepare_dataset(
     if max_seq_length == 0: max_seq_length = getattr(args, "max_seq_length", 0)
     if max_seq_length == 0: max_seq_length = getattr(self, "max_seq_length", 0)
     if max_seq_length == 0: max_seq_length = getattr(self, "max_seq", 0)
-    if max_seq_length == 0: raise RuntimeError("Unsloth: max_seq_length is 0! Please specify one!")
+    if max_seq_length == 0: raise RuntimeError("bitsloth: max_seq_length is 0! Please specify one!")
     dataset_text_field = getattr(args, "dataset_text_field", "text")
     do_truncation = max_seq_length != 0
     do_formatting_func = False
@@ -658,7 +658,7 @@ def sft_prepare_dataset(
         # Most likely forgot data collator!
         if is_vlm and not hasattr(tokenizer, "pad"):
             # Check if processing_class has a .pad, if not, use tokenizer.tokenizer
-            raise RuntimeError(f"Unsloth: {processing_class.__class__} does not have .pad!")
+            raise RuntimeError(f"bitsloth: {processing_class.__class__} does not have .pad!")
         self.data_collator = DataCollatorForSeq2Seq(tokenizer)
         used_column_names.append("labels")
         do_tokenize = False
@@ -666,7 +666,7 @@ def sft_prepare_dataset(
         # Skip dataset prep, and set data collator
         if is_vlm and not hasattr(tokenizer, "pad"):
             # Check if processing_class has a .pad, if not, use tokenizer.tokenizer
-            raise RuntimeError(f"Unsloth: {processing_class.__class__} does not have .pad!")
+            raise RuntimeError(f"bitsloth: {processing_class.__class__} does not have .pad!")
         self.data_collator = DataCollatorForLanguageModeling(tokenizer, mlm = False)
         do_tokenize = False
     elif "prompt" in column_names and "completion" in column_names:
@@ -678,7 +678,7 @@ def sft_prepare_dataset(
     elif dataset_text_field not in column_names:
         do_formatting_func = True
         if formatting_func is None:
-            raise RuntimeError("Unsloth: You must specify a `formatting_func`")
+            raise RuntimeError("bitsloth: You must specify a `formatting_func`")
     pass
 
     if do_tokenize:
@@ -687,7 +687,7 @@ def sft_prepare_dataset(
             test_text = formatting_func(next(iter(dataset)))
             if not isinstance(test_text, list):
                 raise ValueError(
-                    "Unsloth: The `formatting_func` should return a list of processed strings."
+                    "bitsloth: The `formatting_func` should return a list of processed strings."
                 )
             test_text = test_text[0]
         elif do_prompt_completion:
@@ -726,7 +726,7 @@ def sft_prepare_dataset(
         if bos_token is not None:
             if (test_text is not None and test_text.startswith(bos_token)) or bos_token in chat_template:
                 add_special_tokens = False
-                print("Unsloth: We found double BOS tokens - we shall remove one automatically.")
+                print("bitsloth: We found double BOS tokens - we shall remove one automatically.")
         pass
 
         # Create tokenize function
@@ -802,7 +802,7 @@ def sft_prepare_dataset(
                 return result
 
             if use_desc:
-                map_kwargs["desc"] = 'Unsloth: Tokenizing ["prompt"+"completion"]'
+                map_kwargs["desc"] = 'bitsloth: Tokenizing ["prompt"+"completion"]'
             import warnings as _w
             with _w.catch_warnings():
                 _w.filterwarnings("ignore", message=".*couldn't be hashed properly.*")
@@ -811,7 +811,7 @@ def sft_prepare_dataset(
                     remove_columns=list(column_names), **map_kwargs,
                 )
         else:
-            if use_desc: map_kwargs["desc"] = f'Unsloth: Tokenizing ["{dataset_text_field}"]'
+            if use_desc: map_kwargs["desc"] = f'bitsloth: Tokenizing ["{dataset_text_field}"]'
             import warnings as _w
             with _w.catch_warnings():
                 _w.filterwarnings("ignore", message=".*couldn't be hashed properly.*")
@@ -828,13 +828,13 @@ def sft_prepare_dataset(
         try:
             pack_dataset
         except:
-            print("Unsloth: Hugging Face's packing is currently buggy - we're disabling it for now!")
+            print("bitsloth: Hugging Face's packing is currently buggy - we're disabling it for now!")
             return dataset
 
         if max_seq_length == 0:
             raise ValueError("When packing is enabled, `max_seq_length` can't be `None`.")
 
-        if use_desc: map_kwargs["desc"] = f"Unsloth: Packing {dataset_name} dataset"
+        if use_desc: map_kwargs["desc"] = f"bitsloth: Packing {dataset_name} dataset"
         dataset = pack_dataset(
             dataset.select_columns(used_column_names),
             max_seq_length,
@@ -869,8 +869,8 @@ def patch_torchcodec_audio_decoder():
 pass
 
 
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by

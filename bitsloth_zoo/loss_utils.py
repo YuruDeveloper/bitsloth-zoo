@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -32,13 +32,13 @@ from .temporary_patches.common import (
 import inspect
 
 global HAS_CUT_CROSS_ENTROPY
-global UNSLOTH_STUDIO_ENABLED
+global bitsloth_STUDIO_ENABLED
 import importlib.util
 
-if importlib.util.find_spec("unsloth_studio") is None:
-    UNSLOTH_STUDIO_ENABLED = False
+if importlib.util.find_spec("bitsloth_studio") is None:
+    bitsloth_STUDIO_ENABLED = False
 else:
-    UNSLOTH_STUDIO_ENABLED = os.environ.get("UNSLOTH_STUDIO_DISABLED", "0") == "0"
+    bitsloth_STUDIO_ENABLED = os.environ.get("bitsloth_STUDIO_DISABLED", "0") == "0"
 pass
 
 if DEVICE_TYPE == "cuda":
@@ -81,26 +81,26 @@ __all__ = [
     "HAS_CUT_CROSS_ENTROPY",
     "fused_linear_cross_entropy",
     "fast_linear_cross_entropy",
-    "_unsloth_get_batch_samples",
-    "unsloth_fused_ce_loss",
+    "_bitsloth_get_batch_samples",
+    "bitsloth_fused_ce_loss",
 ]
 
-from .fused_losses import unsloth_fused_ce_loss
+from .fused_losses import bitsloth_fused_ce_loss
 
 
 def patch_loss_functions(_fast_cross_entropy_loss, torch_compile=True):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     try:
         import transformers.loss.loss_utils
     except:
         print(
-            "Unsloth: Cannot patch loss functions - update transformers for faster modules!"
+            "bitsloth: Cannot patch loss functions - update transformers for faster modules!"
         )
         return None
     pass
 
     # Generic cross entropy loss
-    def unsloth_fixed_cross_entropy(
+    def bitsloth_fixed_cross_entropy(
         source,
         target,
         num_items_in_batch: int = None,
@@ -131,7 +131,7 @@ def patch_loss_functions(_fast_cross_entropy_loss, torch_compile=True):
     pass
 
     # Causal LM loss
-    def UnslothForCausalLMLoss(
+    def bitslothForCausalLMLoss(
         logits,
         labels,
         vocab_size: int,
@@ -145,7 +145,7 @@ def patch_loss_functions(_fast_cross_entropy_loss, torch_compile=True):
         shift_labels = torch.empty_like(labels)
         shift_labels[..., :-1] = labels[..., 1:]
         shift_labels[..., -1] = ignore_index
-        loss = unsloth_fixed_cross_entropy(
+        loss = bitsloth_fixed_cross_entropy(
             shift_logits, shift_labels, num_items_in_batch, ignore_index, **kwargs
         )
         return loss
@@ -153,11 +153,11 @@ def patch_loss_functions(_fast_cross_entropy_loss, torch_compile=True):
     pass
 
     if Version(torch.__version__) < Version("2.4.0"):
-        UnslothForCausalLMLoss = torch._disable_dynamo(UnslothForCausalLMLoss)
+        bitslothForCausalLMLoss = torch._disable_dynamo(bitslothForCausalLMLoss)
 
     elif torch_compile:
-        UnslothForCausalLMLoss = torch.compile(
-            UnslothForCausalLMLoss,
+        bitslothForCausalLMLoss = torch.compile(
+            bitslothForCausalLMLoss,
             dynamic=True,
             fullgraph=False,
             options=torch_compile_options,
@@ -168,7 +168,7 @@ def patch_loss_functions(_fast_cross_entropy_loss, torch_compile=True):
     import transformers.modeling_utils
 
     LOSS_MAPPING = transformers.loss.loss_utils.LOSS_MAPPING
-    LOSS_MAPPING["ForCausalLM"] = UnslothForCausalLMLoss
+    LOSS_MAPPING["ForCausalLM"] = bitslothForCausalLMLoss
 
     # Remove @property and @lru_cache
     if hasattr(
@@ -180,8 +180,8 @@ def patch_loss_functions(_fast_cross_entropy_loss, torch_compile=True):
             transformers.modeling_utils.PreTrainedModel.loss_function.fget.__wrapped__
         )
     pass
-    print("Unsloth: Patched cross entropy losses.")
-    os.environ["UNSLOTH_PATCHED"] = "1"
+    print("bitsloth: Patched cross entropy losses.")
+    os.environ["bitsloth_PATCHED"] = "1"
 
 
 pass
@@ -223,7 +223,7 @@ def fused_linear_cross_entropy(
     logit_softcapping: float = 0,
     accuracy_threshold: str = "auto",
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     if num_items_in_batch is not None and torch.is_tensor(num_items_in_batch):
         num_items_in_batch = num_items_in_batch.to(
             hidden_states.device, non_blocking=True
@@ -254,9 +254,9 @@ pass
 
 def fast_linear_cross_entropy(*args, **kwargs):
     raise RuntimeError(
-        "Unsloth: `fast_linear_cross_entropy` has been deprecated. "
-        "Please update Unsloth and Unsloth Zoo via:\n"
-        "pip install --upgrade --no-cache-dir --no-deps bitsloth_zoo unsloth"
+        "bitsloth: `fast_linear_cross_entropy` has been deprecated. "
+        "Please update bitsloth and bitsloth Zoo via:\n"
+        "pip install --upgrade --no-cache-dir --no-deps bitsloth_zoo bitsloth"
     )
 
 
@@ -290,10 +290,10 @@ mark_static = torch._dynamo.mark_static
 mark_dynamic = torch._dynamo.mark_dynamic
 
 
-def _unsloth_get_batch_samples(
+def _bitsloth_get_batch_samples(
     self, epoch_iterator, num_batches, device=None, *args, **kwargs
 ):
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     batch_samples = []
     num_items_in_batch = None
 
@@ -408,7 +408,7 @@ def _unsloth_get_batch_samples(
             raise RuntimeError(exception)
     pass
     if BITSLOTH_ENABLE_LOGGING:
-        logger.info(f"Unsloth: num_items_in_batch = {num_items_in_batch}")
+        logger.info(f"bitsloth: num_items_in_batch = {num_items_in_batch}")
 
     # [TODO] Unfortunately skip_guard_eval_unsafe = True fails
     # Increment counter and set compiler stance
@@ -419,7 +419,7 @@ def _unsloth_get_batch_samples(
     #         # Skip guards after 16 warmup runs
     #         torch_compiler_set_stance(stance = "default", skip_guard_eval_unsafe = True)
     #         if BITSLOTH_ENABLE_LOGGING:
-    #             logger.info(f"Unsloth: Skipping torch.compile guards after 16 steps at TRAINING_ITERATIONS = {TRAINING_ITERATIONS}")
+    #             logger.info(f"bitsloth: Skipping torch.compile guards after 16 steps at TRAINING_ITERATIONS = {TRAINING_ITERATIONS}")
     #     elif torch_dynamo_eval_frame._stance.skip_guard_eval_unsafe == False and TRAINING_ITERATIONS > 16:
     #         # Reset TRAINING_ITERATIONS
     #         torch_compiler_set_stance(stance = "default", skip_guard_eval_unsafe = False)
@@ -430,8 +430,8 @@ def _unsloth_get_batch_samples(
 
 pass
 
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by

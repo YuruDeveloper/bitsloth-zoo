@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -33,43 +33,42 @@ from .device_type import (
 __all__ = [
     "calculate_n_gradient_checkpoints",
     "prepare_n_gradient_checkpoints",
-    "Unsloth_Offloaded_Gradient_Checkpointer",
-    "unsloth_offloaded_gradient_checkpoint",
-    "patch_unsloth_gradient_checkpointing",
-    "unpatch_unsloth_gradient_checkpointing",
-
-    "Unsloth_Gradient_Checkpointer",
-    "unsloth_gradient_checkpoint",
+    "Bitsloth_Offloaded_Gradient_Checkpointer",
+    "bitsloth_offloaded_gradient_checkpoint",
+    "patch_bitsloth_gradient_checkpointing",
+    "unpatch_bitsloth_gradient_checkpointing",
+    "Bitsloth_Gradient_Checkpointer",
+    "bitsloth_gradient_checkpoint",
     "patch_gradient_checkpointing",
     "unpatch_gradient_checkpointing",
-
-    "patch_unsloth_smart_gradient_checkpointing",
-    "unpatch_unsloth_smart_gradient_checkpointing",
-    "reset_unsloth_gradient_checkpointing_buffers",
+    "patch_bitsloth_smart_gradient_checkpointing",
+    "unpatch_bitsloth_smart_gradient_checkpointing",
+    "reset_bitsloth_gradient_checkpointing_buffers",
 ]
 
 # Initial buffer sizes for gradient checkpointing
-INITIAL_CPU_BUFFER_SIZE = 128 * 1024       # Initial size per CPU buffer
-INITIAL_GPU_BUFFER_SIZE = 2 * 256 * 2048   # Initial size per GPU buffer
-INITIAL_CPU_BUFFER_COUNT = 200             # Initial number of CPU buffers
+INITIAL_CPU_BUFFER_SIZE = 128 * 1024  # Initial size per CPU buffer
+INITIAL_GPU_BUFFER_SIZE = 2 * 256 * 2048  # Initial size per GPU buffer
+INITIAL_CPU_BUFFER_COUNT = 200  # Initial number of CPU buffers
 
 torch_version = torch.__version__
 if Version(torch_version) < Version("2.4.0"):
     torch_amp_custom_fwd = torch.cuda.amp.custom_fwd
     torch_amp_custom_bwd = torch.cuda.amp.custom_bwd
 else:
-    torch_amp_custom_fwd = torch.amp.custom_fwd(device_type = "cuda")
-    torch_amp_custom_bwd = torch.amp.custom_bwd(device_type = "cuda")
+    torch_amp_custom_fwd = torch.amp.custom_fwd(device_type="cuda")
+    torch_amp_custom_bwd = torch.amp.custom_bwd(device_type="cuda")
 pass
 
 
 def _calculate_n_gradient_checkpoints(
-    n_layers : int,
-    method   : Optional[Union[str, int]] = "sqrt",
+    n_layers: int,
+    method: Optional[Union[str, int]] = "sqrt",
 ) -> List[int]:
-    assert(type(n_layers) is int and n_layers > 0)
+    assert type(n_layers) is int and n_layers > 0
 
-    if method is None: method = "sqrt"
+    if method is None:
+        method = "sqrt"
 
     if method == "sqrt":
         n_checkpoints = int(n_layers**0.5)
@@ -79,39 +78,43 @@ def _calculate_n_gradient_checkpoints(
         raise ValueError("method must be 'sqrt' or an int >0 and <= n_layers.")
 
     size = n_layers // n_checkpoints
-    sizes = np.full(n_checkpoints, size, dtype = int)
+    sizes = np.full(n_checkpoints, size, dtype=int)
     leftovers = n_layers % n_checkpoints
     # We append leftovers from the right
     for k in range(leftovers):
-        sizes[n_checkpoints-1-k] += 1
+        sizes[n_checkpoints - 1 - k] += 1
     boundaries = np.hstack((0, np.cumsum(sizes)))
     boundaries = boundaries.tolist()
     return boundaries
+
+
 pass
 
 
 def calculate_n_gradient_checkpoints(
-    n_layers              : int,
-    layers_per_checkpoint : Optional[Union[str, int]] = "sqrt",
+    n_layers: int,
+    layers_per_checkpoint: Optional[Union[str, int]] = "sqrt",
 ) -> List[int]:
-    assert(type(n_layers) is int and n_layers > 0)
+    assert type(n_layers) is int and n_layers > 0
 
     if layers_per_checkpoint is None or layers_per_checkpoint == 1:
         return None
 
     boundaries = _calculate_n_gradient_checkpoints(n_layers, layers_per_checkpoint)
 
-    assert(boundaries[0] == 0 and boundaries[-1] == n_layers)
-    assert(min(boundaries) == 0 and max(boundaries) == n_layers)
-    assert(np.diff(boundaries).min() >= 0)
+    assert boundaries[0] == 0 and boundaries[-1] == n_layers
+    assert min(boundaries) == 0 and max(boundaries) == n_layers
+    assert np.diff(boundaries).min() >= 0
     return boundaries
+
+
 pass
 
 
 def prepare_n_gradient_checkpoints(
-    model                 : Any,
-    layers_per_checkpoint : Optional[Union[str, int]] = "sqrt",
-    use_reentrant         : Optional[bool] = True,
+    model: Any,
+    layers_per_checkpoint: Optional[Union[str, int]] = "sqrt",
+    use_reentrant: Optional[bool] = True,
 ) -> None:
     """
     Calculates where to place the gradient checkpoints given n_layers.
@@ -134,7 +137,9 @@ def prepare_n_gradient_checkpoints(
         if hasattr(model.model, "layers"):
             _model = model.model
     if _model is None:
-        raise TypeError("`model` or `model.model` does not have attribute `layers`. Are you sure this is a model?")
+        raise TypeError(
+            "`model` or `model.model` does not have attribute `layers`. Are you sure this is a model?"
+        )
     pass
 
     if use_reentrant is False:
@@ -143,49 +148,60 @@ def prepare_n_gradient_checkpoints(
 
     n_layers = len(_model.layers)
     boundaries = calculate_n_gradient_checkpoints(n_layers, layers_per_checkpoint)
-    _model._gradient_checkpointing_boundaries    = boundaries
+    _model._gradient_checkpointing_boundaries = boundaries
     _model._gradient_checkpointing_use_reentrant = use_reentrant
+
+
 pass
 
 
-class Unsloth_Offloaded_Gradient_Checkpointer(torch.autograd.Function):
+class Bitsloth_Offloaded_Gradient_Checkpointer(torch.autograd.Function):
     """
-    All Unsloth Zoo code licensed under LGPLv3
+    All bitsloth Zoo code licensed under LGPLv3
     Saves VRAM by smartly offloading to RAM.
     Tiny hit to performance, since we mask the movement via non blocking calls.
     """
+
     @staticmethod
     @torch_amp_custom_fwd
     def forward(ctx, forward_function, hidden_states, *args):
         ctx.device = hidden_states.device
-        saved_hidden_states = hidden_states.to("cpu", non_blocking = True)
+        saved_hidden_states = hidden_states.to("cpu", non_blocking=True)
         with torch.no_grad():
             output = forward_function(hidden_states, *args)
         ctx.save_for_backward(saved_hidden_states)
         ctx.forward_function = forward_function
         ctx.args = args
         return output
+
     pass
 
     @staticmethod
     @torch_amp_custom_bwd
     def backward(ctx, dY):
         (hidden_states,) = ctx.saved_tensors
-        hidden_states = hidden_states.to(ctx.device, non_blocking = True).detach()
+        hidden_states = hidden_states.to(ctx.device, non_blocking=True).detach()
         hidden_states.requires_grad_(True)
         with torch.enable_grad():
             (output,) = ctx.forward_function(hidden_states, *ctx.args)
         torch.autograd.backward(output, dY)
-        return (None, hidden_states.grad,) + (None,)*len(ctx.args)
+        return (
+            None,
+            hidden_states.grad,
+        ) + (None,) * len(ctx.args)
+
     pass
+
+
 pass
 
 
-class Unsloth_Gradient_Checkpointer(torch.autograd.Function):
+class Bitsloth_Gradient_Checkpointer(torch.autograd.Function):
     """
-    All Unsloth Zoo code licensed under LGPLv3
+    All bitsloth Zoo code licensed under LGPLv3
     Same as normal gradient checkpointing but cleaner
     """
+
     @staticmethod
     @torch_amp_custom_fwd
     def forward(ctx, forward_function, hidden_states, *args):
@@ -195,6 +211,7 @@ class Unsloth_Gradient_Checkpointer(torch.autograd.Function):
         ctx.forward_function = forward_function
         ctx.args = args
         return output
+
     pass
 
     @staticmethod
@@ -206,62 +223,89 @@ class Unsloth_Gradient_Checkpointer(torch.autograd.Function):
         with torch.enable_grad():
             (output,) = ctx.forward_function(hidden_states, *ctx.args)
         torch.autograd.backward(output, dY)
-        return (None, hidden_states.grad,) + (None,)*len(ctx.args)
+        return (
+            None,
+            hidden_states.grad,
+        ) + (None,) * len(ctx.args)
+
     pass
+
+
 pass
 
 
 # @torch._disable_dynamo
-# def unsloth_offloaded_gradient_checkpoint(function, *args, use_reentrant = None, **kwargs):
-#     return Unsloth_Offloaded_Gradient_Checkpointer.apply(function, *args)
+# def bitsloth_offloaded_gradient_checkpoint(function, *args, use_reentrant = None, **kwargs):
+#     return bitsloth_Offloaded_Gradient_Checkpointer.apply(function, *args)
 # pass
 
 
 @torch._disable_dynamo
-def unsloth_gradient_checkpoint(function, *args, use_reentrant = None, **kwargs):
-    return Unsloth_Gradient_Checkpointer.apply(function, *args)
+def bitsloth_gradient_checkpoint(function, *args, use_reentrant=None, **kwargs):
+    return Bitsloth_Gradient_Checkpointer.apply(function, *args)
+
+
 pass
 
 
-def patch_unsloth_gradient_checkpointing():
-    print("Unsloth: Patched gradient checkpointing for long context finetuning.")
+def patch_bitsloth_gradient_checkpointing():
+    print("Bitsloth: Patched gradient checkpointing for long context finetuning.")
     import torch.utils
-    if torch.utils.checkpoint.checkpoint.__name__ == "unsloth_offloaded_gradient_checkpoint": return
+
+    if (
+        torch.utils.checkpoint.checkpoint.__name__
+        == "bitsloth_offloaded_gradient_checkpoint"
+    ):
+        return
     torch.utils.checkpoint._old_checkpoint = torch.utils.checkpoint.checkpoint
-    torch.utils.checkpoint.checkpoint = unsloth_offloaded_gradient_checkpoint
+    torch.utils.checkpoint.checkpoint = bitsloth_offloaded_gradient_checkpoint
     import transformers.modeling_utils
-    transformers.modeling_utils.checkpoint = unsloth_offloaded_gradient_checkpoint
-    os.environ["UNSLOTH_PATCHED"] = "1"
+
+    transformers.modeling_utils.checkpoint = bitsloth_offloaded_gradient_checkpoint
+    os.environ["BITSLOTH_PATCHED"] = "1"
+
+
 pass
 
 
 def patch_gradient_checkpointing():
-    print("Unsloth: Patched gradient checkpointing.")
+    print("Bitsloth: Patched gradient checkpointing.")
     import torch.utils
-    if torch.utils.checkpoint.checkpoint.__name__ == "unsloth_gradient_checkpoint": return
+
+    if torch.utils.checkpoint.checkpoint.__name__ == "bitsloth_gradient_checkpoint":
+        return
     torch.utils.checkpoint._old_checkpoint = torch.utils.checkpoint.checkpoint
-    torch.utils.checkpoint.checkpoint = unsloth_gradient_checkpoint
+    torch.utils.checkpoint.checkpoint = bitsloth_gradient_checkpoint
     import transformers.modeling_utils
-    transformers.modeling_utils.checkpoint = unsloth_gradient_checkpoint
-    os.environ["UNSLOTH_PATCHED"] = "1"
+
+    transformers.modeling_utils.checkpoint = bitsloth_gradient_checkpoint
+    os.environ["BITSLOTH_PATCHED"] = "1"
+
+
 pass
 
 
-def unpatch_unsloth_gradient_checkpointing():
+def unpatch_bitsloth_gradient_checkpointing():
     import torch.utils
+
     if hasattr(torch.utils.checkpoint, "_old_checkpoint"):
         torch.utils.checkpoint.checkpoint = torch.utils.checkpoint._old_checkpoint
         del torch.utils.checkpoint._old_checkpoint
     pass
+
+
 pass
 
 
 def unpatch_gradient_checkpointing():
     import torch.utils
+
     if hasattr(torch.utils.checkpoint, "_old_checkpoint"):
         torch.utils.checkpoint.checkpoint = torch.utils.checkpoint._old_checkpoint
         del torch.utils.checkpoint._old_checkpoint
     pass
+
+
 pass
 
 
@@ -276,6 +320,8 @@ from torch.utils.checkpoint import (
     contextlib,
     DefaultDeviceType,
 )
+
+
 # Added [device_type] in Torch 2.5!
 def set_device_states(devices, states, *, device_type=None) -> None:
     """Sets random number generator states for the specified devices.
@@ -295,6 +341,8 @@ def set_device_states(devices, states, *, device_type=None) -> None:
     for device, state in zip(devices, states):
         with device_module.device(device):
             device_module.set_rng_state(state)
+
+
 pass
 
 global CPU_BUFFERS
@@ -304,7 +352,7 @@ global BACKWARD_PASS
 global EXTRA_STREAMS
 global MAIN_STREAMS
 global MINIMUM_SIZE
-global USE_UNSLOTH_GC
+global USE_bitsloth_GC
 global LAST_GC_INDEX
 global FIRST_PASS
 global CURRENT_GC_INDEX
@@ -317,8 +365,8 @@ elif DEVICE_TYPE == "xpu":
 CPU_BUFFERS = []
 CPU_INDEX = None
 
-def initialize_unsloth_gradient_checkpointing(dtype = None):
-    # All Unsloth Zoo code licensed under LGPLv3
+
+def initialize_bitsloth_gradient_checkpointing(dtype=None):
     global CPU_BUFFERS
     global CPU_INDEX
     global GPU_BUFFERS
@@ -326,7 +374,7 @@ def initialize_unsloth_gradient_checkpointing(dtype = None):
     global EXTRA_STREAMS
     global MAIN_STREAMS
     global MINIMUM_SIZE
-    global USE_UNSLOTH_GC
+    global USE_BITSLOTH_GC
     global LAST_GC_INDEX
     global FIRST_PASS
     global CURRENT_GC_INDEX
@@ -336,7 +384,7 @@ def initialize_unsloth_gradient_checkpointing(dtype = None):
     if dtype is None:
         if DEVICE_TYPE == "cuda":
             major_version, minor_version = torch.cuda.get_device_capability()
-            SUPPORTS_BFLOAT16 = (major_version >= 8)
+            SUPPORTS_BFLOAT16 = major_version >= 8
         elif DEVICE_TYPE == "hip":
             SUPPORTS_BFLOAT16 = True
         elif DEVICE_TYPE == "xpu":
@@ -345,47 +393,71 @@ def initialize_unsloth_gradient_checkpointing(dtype = None):
     pass
 
     for i in range(200):
-        x = torch.empty(128*1024, dtype = dtype, device = "cpu", pin_memory = True)
+        x = torch.empty(128 * 1024, dtype=dtype, device="cpu", pin_memory=True)
         CPU_BUFFERS.append(x)
     pass
 
     # Allocate buffers to how many GPUs
-    n_gpus = torch.cuda.device_count() if DEVICE_TYPE in ("cuda", "hip") else torch.xpu.device_count()
+    n_gpus = (
+        torch.cuda.device_count()
+        if DEVICE_TYPE in ("cuda", "hip")
+        else torch.xpu.device_count()
+    )
     try:
-        GPU_BUFFERS = tuple([torch.empty(2*256*2048, dtype = dtype, device = f"{DEVICE_TYPE_TORCH}:{i}") for i in range(n_gpus)])
+        GPU_BUFFERS = tuple(
+            [
+                torch.empty(
+                    2 * 256 * 2048, dtype=dtype, device=f"{DEVICE_TYPE_TORCH}:{i}"
+                )
+                for i in range(n_gpus)
+            ]
+        )
     except Exception as e:
-        print("="*10 + "\n")
-        print("Unsloth: Your setup does not support `PYTORCH_CUDA_ALLOC_CONF`\n")
+        print("=" * 10 + "\n")
+        print("Bitsloth: Your setup does not support `PYTORCH_CUDA_ALLOC_CONF`\n")
         print("Please set `import os; os.environ['PYTORCH_CUDA_ALLOC_CONF'] = '';`\n")
-        print("Then re-run Unsloth from the start.")
-        print("="*10 + "\n")
+        print("Then re-run Bitsloth from the start.")
+        print("=" * 10 + "\n")
         raise
 
     BACKWARD_PASS = True
-    EXTRA_STREAMS = tuple([torch.cuda.Stream() if DEVICE_TYPE_TORCH == "cuda" else torch.xpu.Stream() for i in range(n_gpus)])
+    EXTRA_STREAMS = tuple(
+        [
+            torch.cuda.Stream() if DEVICE_TYPE_TORCH == "cuda" else torch.xpu.Stream()
+            for i in range(n_gpus)
+        ]
+    )
     if DEVICE_TYPE in ("cuda", "hip"):
-        MAIN_STREAMS  = tuple([torch.cuda.default_stream(torch.device(f"cuda:{i}")) for i in range(n_gpus)])
+        MAIN_STREAMS = tuple(
+            [
+                torch.cuda.default_stream(torch.device(f"cuda:{i}"))
+                for i in range(n_gpus)
+            ]
+        )
     elif DEVICE_TYPE == "xpu":
-        MAIN_STREAMS  = tuple([torch.xpu.current_stream(torch.device(f"xpu:{i}")) for i in range(n_gpus)])
+        MAIN_STREAMS = tuple(
+            [torch.xpu.current_stream(torch.device(f"xpu:{i}")) for i in range(n_gpus)]
+        )
 
-    # Minimum size to enable Unsloth GC is 2MB -> 32 layers = 64MB
+    # Minimum size to enable bitsloth GC is 2MB -> 32 layers = 64MB
     n_bytes = torch.finfo(dtype).bits // 8
     MINIMUM_SIZE = 2 * 1024 * 1024 // n_bytes
-    USE_UNSLOTH_GC = True
+    USE_bitsloth_GC = True
 
     # Disable offloading on the last layer - uses more VRAM and is slower
     # See https://github.com/pytorch/torchtune/pull/1443
     LAST_GC_INDEX = 0
     FIRST_PASS = True
     CURRENT_GC_INDEX = 0
+
+
 pass
 
 
-class UnslothCheckpointFunction(torch.autograd.Function):
-
+class BitslothCheckpointFunction(torch.autograd.Function):
     @staticmethod
     def forward(ctx, run_function, preserve_rng_state, *args):
-        # All Unsloth Zoo code licensed under LGPLv3
+        # All bitsloth Zoo code licensed under LGPLv3
         # check_backward_validity(args)
         # Check if no requires_grad in inputs
         ctx.run_function = run_function
@@ -417,7 +489,6 @@ class UnslothCheckpointFunction(torch.autograd.Function):
 
         for i, arg in enumerate(args):
             if torch.is_tensor(arg):
-
                 if i == 0 and arg.requires_grad:
                     global FIRST_PASS
                     global LAST_GC_INDEX
@@ -435,7 +506,9 @@ class UnslothCheckpointFunction(torch.autograd.Function):
 
                     global MINIMUM_SIZE
                     global CPU_INDEX
-                    if new_size > MINIMUM_SIZE and ((CURRENT_GC_INDEX != LAST_GC_INDEX) or FIRST_PASS):
+                    if new_size > MINIMUM_SIZE and (
+                        (CURRENT_GC_INDEX != LAST_GC_INDEX) or FIRST_PASS
+                    ):
                         use_gpu_buffer = True
                         global CPU_BUFFERS
                         global GPU_BUFFERS
@@ -444,8 +517,8 @@ class UnslothCheckpointFunction(torch.autograd.Function):
                         global MAIN_STREAMS
                         device = arg.device
                         device_index = device.index
-                        GPU_BUFFER   = GPU_BUFFERS  [device_index]
-                        MAIN_STREAM  = MAIN_STREAMS [device_index]
+                        GPU_BUFFER = GPU_BUFFERS[device_index]
+                        MAIN_STREAM = MAIN_STREAMS[device_index]
                         EXTRA_STREAM = EXTRA_STREAMS[device_index]
 
                         # Handle interrupted training runs
@@ -456,31 +529,51 @@ class UnslothCheckpointFunction(torch.autograd.Function):
 
                         # Extend buffer size
                         if CPU_INDEX >= len(CPU_BUFFERS):
-                            x = torch.empty(new_size, dtype = arg.dtype, device = "cpu", pin_memory = True)
+                            x = torch.empty(
+                                new_size, dtype=arg.dtype, device="cpu", pin_memory=True
+                            )
                             CPU_BUFFERS.append(x)
                         pass
 
                         x = CPU_BUFFERS[CPU_INDEX]
                         shape = arg.shape
-                        if new_size > x.numel(): x.resize_(new_size)
-                        if new_size > GPU_BUFFER.numel(): GPU_BUFFER.resize_(new_size)
+                        if new_size > x.numel():
+                            x.resize_(new_size)
+                        if new_size > GPU_BUFFER.numel():
+                            GPU_BUFFER.resize_(new_size)
                         x = x[:new_size].view(shape)
 
                         # See https://pytorch.org/docs/stable/notes/cuda.html#cuda-streams
                         EXTRA_STREAM.wait_stream(MAIN_STREAM)
                         with torch_gpu_stream(EXTRA_STREAM):
-                            x.copy_(arg, non_blocking = True)
+                            x.copy_(arg, non_blocking=True)
 
-                        ctx._saved_metadata = (new_size, shape, CPU_INDEX, device_index, MAIN_STREAM, EXTRA_STREAM,)
+                        ctx._saved_metadata = (
+                            new_size,
+                            shape,
+                            CPU_INDEX,
+                            device_index,
+                            MAIN_STREAM,
+                            EXTRA_STREAM,
+                        )
                         CPU_INDEX += 1
                         tensor_inputs.append(None)
 
-                        global USE_UNSLOTH_GC
-                        if USE_UNSLOTH_GC:
-                            print("Unsloth: Will smartly offload gradients to save VRAM!")
-                            USE_UNSLOTH_GC = False
+                        global USE_bitsloth_GC
+                        if USE_bitsloth_GC:
+                            print(
+                                "bitsloth: Will smartly offload gradients to save VRAM!"
+                            )
+                            USE_bitsloth_GC = False
                     else:
-                        ctx._saved_metadata = (None, None, None, None, None, None,)
+                        ctx._saved_metadata = (
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                            None,
+                        )
                         tensor_inputs.append(arg)
                     pass
                 else:
@@ -492,20 +585,23 @@ class UnslothCheckpointFunction(torch.autograd.Function):
                 ctx.inputs.append(arg)
             pass
         pass
-        if ctx._requires_gradient: ctx.save_for_backward(*tensor_inputs)
+        if ctx._requires_gradient:
+            ctx.save_for_backward(*tensor_inputs)
 
         with torch.no_grad():
             outputs = run_function(*args)
 
-        if use_gpu_buffer: MAIN_STREAM.wait_stream(EXTRA_STREAM)
+        if use_gpu_buffer:
+            MAIN_STREAM.wait_stream(EXTRA_STREAM)
         return outputs
-    pass
 
+    pass
 
     @staticmethod
     def backward(ctx, *args):
-        # All Unsloth Zoo code licensed under LGPLv3
-        if not ctx._requires_gradient: return None
+        # All bitsloth Zoo code licensed under LGPLv3
+        if not ctx._requires_gradient:
+            return None
 
         if not torch.autograd._is_checkpoint_valid():
             raise RuntimeError(
@@ -520,7 +616,9 @@ class UnslothCheckpointFunction(torch.autograd.Function):
         tensor_indices = ctx.tensor_indices
         tensors = ctx.saved_tensors
 
-        new_size, shape, CPU_INDEX, device_index, MAIN_STREAM, EXTRA_STREAM = ctx._saved_metadata
+        new_size, shape, CPU_INDEX, device_index, MAIN_STREAM, EXTRA_STREAM = (
+            ctx._saved_metadata
+        )
         if CPU_INDEX is not None:
             global GPU_BUFFER
             buffer = GPU_BUFFERS[device_index][:new_size].view(shape)
@@ -529,7 +627,7 @@ class UnslothCheckpointFunction(torch.autograd.Function):
             # See https://pytorch.org/docs/stable/notes/cuda.html#cuda-streams
             EXTRA_STREAM.wait_stream(MAIN_STREAM)
             with torch_gpu_stream(EXTRA_STREAM):
-                buffer.copy_(x, non_blocking = True)
+                buffer.copy_(x, non_blocking=True)
         else:
             # No GPU buffer seen
             if len(tensor_indices) != 0:
@@ -537,7 +635,7 @@ class UnslothCheckpointFunction(torch.autograd.Function):
         pass
 
         # Fill in inputs with appropriate saved tensors.
-        for i, idx in enumerate(tensor_indices[1:], start = 1):
+        for i, idx in enumerate(tensor_indices[1:], start=1):
             inputs[idx] = tensors[i]
         pass
 
@@ -555,16 +653,26 @@ class UnslothCheckpointFunction(torch.autograd.Function):
         if ctx.preserve_rng_state and ctx.had_device_in_fwd:
             rng_devices = ctx.fwd_devices
         with torch.random.fork_rng(
-            devices=rng_devices, enabled=ctx.preserve_rng_state, device_type=ctx.device_type
+            devices=rng_devices,
+            enabled=ctx.preserve_rng_state,
+            device_type=ctx.device_type,
         ):
             if ctx.preserve_rng_state:
                 torch.set_rng_state(ctx.fwd_cpu_state)
                 if ctx.had_device_in_fwd:
-                    set_device_states(ctx.fwd_devices, ctx.fwd_device_states, device_type=ctx.device_type)
+                    set_device_states(
+                        ctx.fwd_devices,
+                        ctx.fwd_device_states,
+                        device_type=ctx.device_type,
+                    )
 
-            device_autocast_ctx = torch.amp.autocast(
-                device_type=ctx.device_type, **ctx.device_autocast_kwargs
-            ) if torch.amp.is_autocast_available(ctx.device_type) else contextlib.nullcontext()
+            device_autocast_ctx = (
+                torch.amp.autocast(
+                    device_type=ctx.device_type, **ctx.device_autocast_kwargs
+                )
+                if torch.amp.is_autocast_available(ctx.device_type)
+                else contextlib.nullcontext()
+            )
 
             # detached_inputs = detach_variable(tuple(inputs))
             detached_inputs = []
@@ -585,7 +693,11 @@ class UnslothCheckpointFunction(torch.autograd.Function):
                 detached_inputs[0] = x
             pass
 
-            with torch.enable_grad(), device_autocast_ctx, torch.amp.autocast("cpu", **ctx.cpu_autocast_kwargs):  # type: ignore[attr-defined]
+            with (
+                torch.enable_grad(),
+                device_autocast_ctx,
+                torch.amp.autocast("cpu", **ctx.cpu_autocast_kwargs),
+            ):  # type: ignore[attr-defined]
                 outputs = ctx.run_function(*detached_inputs)
             pass
         pass
@@ -623,7 +735,10 @@ class UnslothCheckpointFunction(torch.autograd.Function):
         pass
 
         return (None, None) + grads
+
     pass
+
+
 pass
 
 
@@ -633,15 +748,17 @@ from torch.utils.checkpoint import (
     _checkpoint_without_reentrant_generator,
     noop_context_fn,
 )
+
+
 @torch._disable_dynamo
-def unsloth_checkpoint(
+def bitsloth_checkpoint(
     function,
     *args,
     use_reentrant: Optional[bool] = None,
     context_fn: Callable[[], Tuple[ContextManager, ContextManager]] = noop_context_fn,
     determinism_check: str = _DEFAULT_DETERMINISM_MODE,
     debug: bool = False,
-    **kwargs
+    **kwargs,
 ):
     r"""Checkpoint a model or part of the model.
 
@@ -754,10 +871,6 @@ def unsloth_checkpoint(
     Returns:
         Output of running :attr:`function` on :attr:`*args`
     """
-    # Force use_reentrant=True so UnslothCheckpointFunction (smart CPU offloading)
-    # is always used. This is safe because unsloth_checkpoint is only active when
-    # smart GC is patched; when unpatched, the original torch checkpoint is restored.
-    # Fixes transformers 5.2 which defaults use_reentrant=False, bypassing Unsloth.
     use_reentrant = True
 
     # Hack to mix *args with **kwargs in a python 2.7-compliant way
@@ -773,7 +886,7 @@ def unsloth_checkpoint(
                 "Passing `context_fn` or `debug` is only supported when "
                 "use_reentrant=False."
             )
-        return UnslothCheckpointFunction.apply(function, preserve, *args)
+        return BitslothCheckpointFunction.apply(function, preserve, *args)
     else:
         gen = _checkpoint_without_reentrant_generator(
             function, preserve, context_fn, determinism_check, debug, *args, **kwargs
@@ -786,85 +899,103 @@ def unsloth_checkpoint(
             next(gen)
         except StopIteration:
             return ret
+
+
 pass
 
 
-def patch_unsloth_smart_gradient_checkpointing(dtype = None):
-    # All Unsloth Zoo code licensed under LGPLv3
-    if torch.utils.checkpoint.CheckpointFunction.__name__ != "UnslothCheckpointFunction":
-        initialize_unsloth_gradient_checkpointing(dtype)
-        torch.utils.checkpoint._old_CheckpointFunction = torch.utils.checkpoint.CheckpointFunction
-        torch.utils.checkpoint.CheckpointFunction = UnslothCheckpointFunction
+def patch_bitsloth_smart_gradient_checkpointing(dtype=None):
+    if (
+        torch.utils.checkpoint.CheckpointFunction.__name__
+        != "BitslothCheckpointFunction"
+    ):
+        initialize_bitsloth_gradient_checkpointing(dtype)
+        torch.utils.checkpoint._old_CheckpointFunction = (
+            torch.utils.checkpoint.CheckpointFunction
+        )
+        torch.utils.checkpoint.CheckpointFunction = BitslothCheckpointFunction
 
-    if torch.utils.checkpoint.checkpoint.__name__ != "unsloth_checkpoint":
+    if torch.utils.checkpoint.checkpoint.__name__ != "bitsloth_checkpoint":
         torch.utils.checkpoint._old_checkpoint = torch.utils.checkpoint.checkpoint
-        torch.utils.checkpoint.checkpoint = unsloth_checkpoint
+        torch.utils.checkpoint.checkpoint = bitsloth_checkpoint
 
     # Always patch transformers.modeling_utils.checkpoint so that
-    # gradient_checkpointing_enable() wraps unsloth_checkpoint, not the original.
+    # gradient_checkpointing_enable() wraps bitsloth_checkpoint, not the original.
     # Without this, transformers 5.2's use_reentrant=False default bypasses
-    # UnslothCheckpointFunction entirely.
+    # bitslothCheckpointFunction entirely.
     # Must be outside the conditional above since torch.utils.checkpoint.checkpoint
     # may already be patched while transformers.modeling_utils.checkpoint is not.
     import transformers.modeling_utils
-    transformers.modeling_utils.checkpoint = unsloth_checkpoint
+
+    transformers.modeling_utils.checkpoint = bitsloth_checkpoint
+
+
 pass
 
 
-def unpatch_unsloth_smart_gradient_checkpointing():
-    # All Unsloth Zoo code licensed under LGPLv3
-    if (torch.utils.checkpoint.CheckpointFunction.__name__ == "UnslothCheckpointFunction") and \
-        hasattr(torch.utils.checkpoint, "_old_CheckpointFunction"):
-
-        torch.utils.checkpoint.CheckpointFunction = torch.utils.checkpoint._old_CheckpointFunction
+def unpatch_bitsloth_smart_gradient_checkpointing():
+    # All bitsloth Zoo code licensed under LGPLv3
+    if (
+        torch.utils.checkpoint.CheckpointFunction.__name__
+        == "bitslothCheckpointFunction"
+    ) and hasattr(torch.utils.checkpoint, "_old_CheckpointFunction"):
+        torch.utils.checkpoint.CheckpointFunction = (
+            torch.utils.checkpoint._old_CheckpointFunction
+        )
         global CPU_BUFFERS
         global GPU_BUFFERS
         for i in range(len(CPU_BUFFERS)):
-            if hasattr(CPU_BUFFERS[i], "resize_"): CPU_BUFFERS[i].resize_(0)
-            if type(CPU_BUFFERS) is list: CPU_BUFFERS[i] = None
+            if hasattr(CPU_BUFFERS[i], "resize_"):
+                CPU_BUFFERS[i].resize_(0)
+            if type(CPU_BUFFERS) is list:
+                CPU_BUFFERS[i] = None
         for i in range(len(GPU_BUFFERS)):
-            if hasattr(GPU_BUFFERS[i], "resize_"): GPU_BUFFERS[i].resize_(0)
-            if type(GPU_BUFFERS) is list: GPU_BUFFERS[i] = None
+            if hasattr(GPU_BUFFERS[i], "resize_"):
+                GPU_BUFFERS[i].resize_(0)
+            if type(GPU_BUFFERS) is list:
+                GPU_BUFFERS[i] = None
         CPU_BUFFERS = None
         GPU_BUFFERS = None
         torch.cuda.empty_cache()
         gc.collect()
 
-    if (torch.utils.checkpoint.checkpoint.__name__ == "unsloth_checkpoint") and \
-        hasattr(torch.utils.checkpoint, "_old_checkpoint"):
-
+    if (torch.utils.checkpoint.checkpoint.__name__ == "bitsloth_checkpoint") and hasattr(
+        torch.utils.checkpoint, "_old_checkpoint"
+    ):
         torch.utils.checkpoint.checkpoint = torch.utils.checkpoint._old_checkpoint
 
     # Restore transformers.modeling_utils.checkpoint independently.
-    # Must be outside the conditional above because unpatch_unsloth_gradient_checkpointing()
+    # Must be outside the conditional above because unpatch_bitsloth_gradient_checkpointing()
     # may run first (e.g. training_utils.py:201), deleting _old_checkpoint and restoring
     # torch.utils.checkpoint.checkpoint, which makes the condition above False.
     # Use _old_checkpoint if still available, otherwise torch.utils.checkpoint.checkpoint
     # (which has already been restored to the original at that point).
     import transformers.modeling_utils
-    if getattr(transformers.modeling_utils, "checkpoint", None) is unsloth_checkpoint:
+
+    if getattr(transformers.modeling_utils, "checkpoint", None) is bitsloth_checkpoint:
         transformers.modeling_utils.checkpoint = getattr(
-            torch.utils.checkpoint, "_old_checkpoint",
-            torch.utils.checkpoint.checkpoint
+            torch.utils.checkpoint, "_old_checkpoint", torch.utils.checkpoint.checkpoint
         )
+
+
 pass
 
 
-def reset_unsloth_gradient_checkpointing_buffers():
+def reset_bitsloth_gradient_checkpointing_buffers():
     """
-    All Unsloth Zoo code licensed under LGPLv3
+    All bitsloth Zoo code licensed under LGPLv3
 
     Resets CPU_BUFFERS and GPU_BUFFERS to their initial sizes after training.
 
     This function should be called after trainer.train() completes to free up
     memory that was allocated during training while keeping the buffers ready
-    for another potential training run. Unlike unpatch_unsloth_smart_gradient_checkpointing,
+    for another potential training run. Unlike unpatch_bitsloth_smart_gradient_checkpointing,
     this does NOT destroy the buffers or unpatch the checkpointing - it just resets
     them to their initial state.
 
     Usage:
         trainer.train()
-        reset_unsloth_gradient_checkpointing_buffers()  # Free memory, stay ready
+        reset_bitsloth_gradient_checkpointing_buffers()  # Free memory, stay ready
         # Can run trainer.train() again without re-initializing
     """
     global CPU_BUFFERS
@@ -874,7 +1005,7 @@ def reset_unsloth_gradient_checkpointing_buffers():
     global LAST_GC_INDEX
     global FIRST_PASS
     global CURRENT_GC_INDEX
-    global USE_UNSLOTH_GC
+    global USE_bitsloth_GC
 
     # Check if buffers exist
     if CPU_BUFFERS is None or GPU_BUFFERS is None:
@@ -912,24 +1043,30 @@ def reset_unsloth_gradient_checkpointing_buffers():
     LAST_GC_INDEX = 0
     FIRST_PASS = True
     CURRENT_GC_INDEX = 0
-    USE_UNSLOTH_GC = True  # Re-enable the "Will smartly offload" message
+    USE_bitsloth_GC = True  # Re-enable the "Will smartly offload" message
 
     # Clean up freed memory
     torch.cuda.empty_cache()
     gc.collect()
+
+
 pass
 
 
 @torch._disable_dynamo
-def unsloth_offloaded_gradient_checkpoint(function, *args, use_reentrant = None, **kwargs):
+def bitsloth_offloaded_gradient_checkpoint(
+    function, *args, use_reentrant=None, **kwargs
+):
     global CPU_BUFFERS
     if len(CPU_BUFFERS) == 0:
-        initialize_unsloth_gradient_checkpointing(args[0].dtype)
-    return UnslothCheckpointFunction.apply(function, *args)
+        initialize_bitsloth_gradient_checkpointing(args[0].dtype)
+    return bitslothCheckpointFunction.apply(function, *args)
+
+
 pass
 
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by

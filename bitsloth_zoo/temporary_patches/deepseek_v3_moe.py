@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -49,7 +49,7 @@ def patch_deepseek_v3():
     """
     Patches DeepSeekV3 MoE to support Split LoRA using grouped GEMM.
     """
-    # This Unsloth Zoo code section is licensed under AGPL3
+    # This bitsloth Zoo code section is licensed under AGPL3
 
     # Try to import the DeepSeekV3 MoE classes
     try:
@@ -64,7 +64,7 @@ def patch_deepseek_v3():
         return
 
     # Check if already patched
-    if hasattr(DeepseekV3NaiveMoe, "_unsloth_already_patched"):
+    if hasattr(DeepseekV3NaiveMoe, "_bitsloth_already_patched"):
         return
 
     # Patch PEFT ParamWrapper for separated LoRA weights
@@ -140,12 +140,12 @@ def patch_deepseek_v3():
         return first_weight, second_weight, scaling, num_experts
 
     # Register the extractor on the NaiveMoe class (avoid binding as instance method)
-    DeepseekV3NaiveMoe._unsloth_lora_extractor_fn = staticmethod(
+    DeepseekV3NaiveMoe._bitsloth_lora_extractor_fn = staticmethod(
         _deepseek_v3_lora_extractor
     )
     # Also mark the model type for weight preprocessing
-    DeepseekV3NaiveMoe._unsloth_model_type = "deepseek_v3"
-    DeepseekV3NaiveMoe._unsloth_already_patched = True
+    DeepseekV3NaiveMoe._bitsloth_model_type = "deepseek_v3"
+    DeepseekV3NaiveMoe._bitsloth_already_patched = True
 
     # ====================================================================
     # Patch DeepseekV3NaiveMoe.forward to use backend dispatch in moe_utils
@@ -169,7 +169,7 @@ def patch_deepseek_v3():
         hidden_states = hidden_states.view(-1, hidden_states.shape[-1])
 
         # Mark the experts module for proper LoRA extraction
-        self.experts._unsloth_model_type = "deepseek_v3"
+        self.experts._bitsloth_model_type = "deepseek_v3"
 
         hidden_states = self.experts(hidden_states, topk_indices, topk_weights).view(
             *orig_shape
@@ -181,11 +181,11 @@ def patch_deepseek_v3():
     patch_function(DeepseekV3MoE, "forward", patched_moe_forward)
 
     if BITSLOTH_ENABLE_LOGGING:
-        logger.info("Unsloth: Patched DeepSeekV3 MoE for Split LoRA support.")
+        logger.info("bitsloth: Patched DeepSeekV3 MoE for Split LoRA support.")
 
     # ====================================================================
     # Patch DeepseekV3ForCausalLM.forward for GRPO training
-    # When UNSLOTH_RETURN_HIDDEN_STATES=1, return hidden_states instead of logits
+    # When bitsloth_RETURN_HIDDEN_STATES=1, return hidden_states instead of logits
     # ====================================================================
     try:
         from transformers.models.deepseek_v3.modeling_deepseek_v3 import (
@@ -209,10 +209,10 @@ def patch_deepseek_v3():
             logits_to_keep=0,
             **kwargs,
         ):
-            # This Unsloth Zoo code section is licensed under AGPL3
+            # This bitsloth Zoo code section is licensed under AGPL3
 
             RETURN_HIDDEN_STATES = (
-                os.environ.get("UNSLOTH_RETURN_HIDDEN_STATES", "0") == "1"
+                os.environ.get("bitsloth_RETURN_HIDDEN_STATES", "0") == "1"
             )
 
             if not RETURN_HIDDEN_STATES:
@@ -268,7 +268,7 @@ def patch_deepseek_v3():
                 router_logits=outputs.router_logits,
             )
 
-        # Preserve __qualname__ so _unsloth_get_batch_samples can detect
+        # Preserve __qualname__ so _bitsloth_get_batch_samples can detect
         # this is a CausalLM forward and compute num_items_in_batch properly.
         _patched_causal_lm_forward.__qualname__ = (
             _original_causal_lm_forward.__qualname__
@@ -278,16 +278,16 @@ def patch_deepseek_v3():
 
         if BITSLOTH_ENABLE_LOGGING:
             logger.info(
-                "Unsloth: Patched DeepSeekV3ForCausalLM.forward for GRPO hidden states."
+                "bitsloth: Patched DeepSeekV3ForCausalLM.forward for GRPO hidden states."
             )
     except Exception as e:
         if BITSLOTH_ENABLE_LOGGING:
             logger.warning(
-                f"Unsloth: Could not patch DeepSeekV3ForCausalLM.forward: {e}"
+                f"bitsloth: Could not patch DeepSeekV3ForCausalLM.forward: {e}"
             )
 
     return True
 
 
-# Register the patch - it will be called when unsloth is imported
+# Register the patch - it will be called when bitsloth is imported
 TEMPORARY_PATCHES.append(patch_deepseek_v3)

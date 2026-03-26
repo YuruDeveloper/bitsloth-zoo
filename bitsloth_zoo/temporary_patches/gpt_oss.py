@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -27,7 +27,7 @@ from .common import (
     _torch_compile,
     get_torch_compile_options,
     BITSLOTH_ENABLE_LOGGING,
-    UNSLOTH_COMPILE_DISABLE,
+    bitsloth_COMPILE_DISABLE,
 )
 from importlib.metadata import version as importlib_version
 from ..utils import Version
@@ -49,9 +49,9 @@ from ..hf_utils import dtype_from_config
 torch_cuda_device = torch.cuda.device
 
 # MXFP4 configuration
-# Set UNSLOTH_MXFP4_NO_DEQUANTIZE=1 to keep MXFP4 weights quantized (requires triton_kernels)
+# Set bitsloth_MXFP4_NO_DEQUANTIZE=1 to keep MXFP4 weights quantized (requires triton_kernels)
 # Otherwise, MXFP4 weights will be dequantized to bf16 for LoRA training
-UNSLOTH_MXFP4_NO_DEQUANTIZE = os.environ.get("UNSLOTH_MXFP4_NO_DEQUANTIZE", "0") == "1"
+bitsloth_MXFP4_NO_DEQUANTIZE = os.environ.get("bitsloth_MXFP4_NO_DEQUANTIZE", "0") == "1"
 
 
 def _check_triton_kernels_available():
@@ -281,7 +281,7 @@ def patch_gpt_oss():
         def backward(ctx, grad_token):
             raise NotImplementedError(
                 "Backwards pass using MXFP4 is still under construction!\n"
-                "Instead, use `unsloth/gpt-oss-20b-BF16` for bfloat16 training which will work for LoRA.\n"
+                "Instead, use `bitsloth/gpt-oss-20b-BF16` for bfloat16 training which will work for LoRA.\n"
                 "Or, use `load_in_4bit = True` which allows finetuning."
             )
             (
@@ -735,11 +735,11 @@ class ParameterModule(nn.Linear):
     """
     A module that wraps a parameter to look like a Linear layer for PEFT.
     It inherits from nn.Linear but manages 3D <-> 2D weight conversion.
-    Unsloth grouped_mm requires 3D weights:
+    bitsloth grouped_mm requires 3D weights:
       - gate_up: (E, H, 2I)
       - down: (E, I, H)
     PEFT Linear requires 2D weights: (Out, In).
-    We store the weight as 2D for PEFT, and reshape for Unsloth via get_param().
+    We store the weight as 2D for PEFT, and reshape for bitsloth via get_param().
     """
 
     def __init__(
@@ -758,7 +758,7 @@ class ParameterModule(nn.Linear):
         return f"in_features={self.in_features}, out_features={self.out_features}, shape_3d={self.shape_3d}"
 
     def get_param(self):
-        """Restores the 3D weight for Unsloth computation."""
+        """Restores the 3D weight for bitsloth computation."""
         # 2D weight (Out, In) -> View (Unflattened 2D) -> Permute -> 3D(E, ...)
         # We need to know the unflattened shape.
         # gate_up: 2D (E*2I, H). View (E, 2I, H). Permute(0,2,1) -> (E, H, 2I).
@@ -820,7 +820,7 @@ class ParameterModule(nn.Linear):
 
 
 def patch_gpt_oss_compiler_exports():
-    model_name = os.environ.get("UNSLOTH_MODEL_NAME", "").replace("-", "_")
+    model_name = os.environ.get("bitsloth_MODEL_NAME", "").replace("-", "_")
     if "gpt_oss" not in model_name:
         return
     try:
@@ -1295,7 +1295,7 @@ def patch_gpt_oss_bnb4bit():
     GptOssExpertsBnb4bit.__qualname__ = "GptOssExperts"
 
     transformers.models.gpt_oss.modeling_gpt_oss.GptOssExperts = GptOssExpertsBnb4bit
-    # Use the unsloth GptOssTopKRouter (with self.linear = nn.Linear) for the router.
+    # Use the bitsloth GptOssTopKRouter (with self.linear = nn.Linear) for the router.
     # The BnB 4-bit checkpoint stores router weights as router.linear.weight/bias.
     # GptOssTopKRouterBnb4bit had self.weight/bias directly with a _load_from_state_dict
     # override to remap keys, but transformers v5 bypasses _load_from_state_dict
@@ -1303,8 +1303,8 @@ def patch_gpt_oss_bnb4bit():
     # and router weights were randomly initialized - causing high loss (~4-5).
     transformers.models.gpt_oss.modeling_gpt_oss.GptOssTopKRouter = GptOssTopKRouter
 
-    logger.info("Unsloth: Patched GPT OSS with BitsAndBytes 4bit compatible classes")
-    os.environ["UNSLOTH_GPT_OSS_BNB4BIT_PATCHED"] = "1"
+    logger.info("bitsloth: Patched GPT OSS with BitsAndBytes 4bit compatible classes")
+    os.environ["bitsloth_GPT_OSS_BNB4BIT_PATCHED"] = "1"
 
     # Inject BnB helpers so compiler-generated modules can import them
     # from transformers.models.gpt_oss.modeling_gpt_oss
@@ -1337,7 +1337,7 @@ def restore_gpt_oss_original():
             transformers.models.gpt_oss.modeling_gpt_oss.GptOssTopKRouter = (
                 transformers.models.gpt_oss.modeling_gpt_oss._original_GptOssTopKRouter
             )
-            logger.info("Unsloth: Restored original GPT OSS classes")
+            logger.info("bitsloth: Restored original GPT OSS classes")
             return True
     except Exception:
         pass
@@ -1347,7 +1347,7 @@ def restore_gpt_oss_original():
 def patch_gpt_oss_bnb4bit_auto():
     """
     Auto-patch GPT-OSS for BnB 4-bit when load_in_4bit is active.
-    Set UNSLOTH_GPT_OSS_BNB4BIT_DISABLE=1 to opt out.
+    Set bitsloth_GPT_OSS_BNB4BIT_DISABLE=1 to opt out.
     """
     if not _should_use_gpt_oss_bnb4bit():
         return
@@ -1624,21 +1624,21 @@ def _should_use_gpt_oss_bnb4bit() -> bool:
     """
     Decide if GPT-OSS should use BnB-compatible 4-bit experts.
     Default: True when load_in_4bit is active.
-    Set UNSLOTH_GPT_OSS_BNB4BIT_DISABLE=1 to force BF16 path.
+    Set bitsloth_GPT_OSS_BNB4BIT_DISABLE=1 to force BF16 path.
     """
-    if "gpt_oss" not in _normalized_unsloth_model_name():
+    if "gpt_oss" not in _normalized_bitsloth_model_name():
         return False
-    if "_load_in_4bit_" not in _normalized_unsloth_model_name():
+    if "_load_in_4bit_" not in _normalized_bitsloth_model_name():
         return False
-    return os.environ.get("UNSLOTH_GPT_OSS_BNB4BIT_DISABLE", "0") != "1"
+    return os.environ.get("bitsloth_GPT_OSS_BNB4BIT_DISABLE", "0") != "1"
 
 
 def _is_gpt_oss_4bit_load() -> bool:
-    return "_load_in_4bit_" in _normalized_unsloth_model_name()
+    return "_load_in_4bit_" in _normalized_bitsloth_model_name()
 
 
-def _normalized_unsloth_model_name() -> str:
-    return os.environ.get("UNSLOTH_MODEL_NAME", "").replace("-", "_")
+def _normalized_bitsloth_model_name() -> str:
+    return os.environ.get("bitsloth_MODEL_NAME", "").replace("-", "_")
 
 
 def _is_transformers_v5() -> bool:
@@ -1654,7 +1654,7 @@ def patch_gpt_oss_moe_for_lora():
     IMPORTANT: We only patch the forward method, NOT replace the entire class.
     This preserves the original class structure so weights load correctly.
     """
-    if "gpt_oss" not in _normalized_unsloth_model_name():
+    if "gpt_oss" not in _normalized_bitsloth_model_name():
         return
     if _is_gpt_oss_4bit_load() or _should_use_gpt_oss_bnb4bit():
         # 4-bit loads should keep quantized weights and use default PEFT LoRA.
@@ -1672,11 +1672,11 @@ def patch_gpt_oss_moe_for_lora():
         GptOssExpertsClass = transformers.models.gpt_oss.modeling_gpt_oss.GptOssExperts
     except Exception as e:
         if BITSLOTH_ENABLE_LOGGING:
-            logger.warning(f"Unsloth: Could not patch GPT OSS MoE for LoRA: {e}")
+            logger.warning(f"bitsloth: Could not patch GPT OSS MoE for LoRA: {e}")
         return
 
     # Check if already patched
-    if hasattr(GptOssExpertsClass, "_unsloth_lora_patched"):
+    if hasattr(GptOssExpertsClass, "_bitsloth_lora_patched"):
         return
 
     # Select backend
@@ -1690,16 +1690,16 @@ def patch_gpt_oss_moe_for_lora():
     # Store original forward and patch - but DON'T replace the class!
     GptOssExpertsClass._original_forward = GptOssExpertsClass.forward
     GptOssExpertsClass.forward = forward
-    GptOssExpertsClass._unsloth_lora_patched = True
+    GptOssExpertsClass._bitsloth_lora_patched = True
 
     if BITSLOTH_ENABLE_LOGGING:
         backend_desc = {
             "grouped_mm": "torch._grouped_mm (batched, fastest)",
-            "unsloth_triton": "Triton kernels",
+            "bitsloth_triton": "Triton kernels",
             "native_torch": "loop fallback (slower)",
         }.get(backend, backend)
         logger.info(
-            f"Unsloth: Patched GPT OSS MoE for LoRA training using {backend_desc}"
+            f"bitsloth: Patched GPT OSS MoE for LoRA training using {backend_desc}"
         )
 
 
@@ -1741,8 +1741,8 @@ def forward_mxfp4_gpt_oss_with_lora(
             "Either:\n"
             "  1. Install triton_kernels from OpenAI, OR\n"
             "  2. Load model with dequantization: Mxfp4Config(dequantize=True), OR\n"
-            "  3. Use the BF16 model: 'unsloth/gpt-oss-20b-BF16'\n"
-            "Set UNSLOTH_MXFP4_NO_DEQUANTIZE=0 (default) to auto-dequantize."
+            "  3. Use the BF16 model: 'bitsloth/gpt-oss-20b-BF16'\n"
+            "Set bitsloth_MXFP4_NO_DEQUANTIZE=0 (default) to auto-dequantize."
         )
 
     from triton_kernels import matmul_ogs, swiglu
@@ -1763,7 +1763,7 @@ def forward_mxfp4_gpt_oss_with_lora(
     if not _MXFP4_LORA_PATH_LOGGED:
         _MXFP4_LORA_PATH_LOGGED = True
         logger.warning_once(
-            f"Unsloth: GPT-OSS MoE training path: MXFP4 + triton_kernels. "
+            f"bitsloth: GPT-OSS MoE training path: MXFP4 + triton_kernels. "
             f"LoRA={has_lora}, experts={self.num_experts}. "
             f"Tip: Increase batch_size for better GPU utilization."
         )
@@ -1904,13 +1904,13 @@ def patch_mxfp4_gpt_oss_for_lora():
     """
     Patch MXFP4 GPT OSS experts for LoRA training.
 
-    This enables finetuning the MXFP4 quantized model (unsloth/gpt-oss-20b)
+    This enables finetuning the MXFP4 quantized model (bitsloth/gpt-oss-20b)
     with LoRA.
 
     IMPORTANT: Requires triton_kernels for native MXFP4 matmul.
     If triton_kernels is not available, users must either:
     - Use Mxfp4Config(dequantize=True) when loading, OR
-    - Use the BF16 model: 'unsloth/gpt-oss-20b-BF16'
+    - Use the BF16 model: 'bitsloth/gpt-oss-20b-BF16'
     """
     # First patch ParamWrapper for MoE separated LoRA (v5 only)
     if _is_transformers_v5():
@@ -1925,16 +1925,16 @@ def patch_mxfp4_gpt_oss_for_lora():
         if Mxfp4GptOssExpertsClass is None:
             if BITSLOTH_ENABLE_LOGGING:
                 logger.warning(
-                    "Unsloth: Mxfp4GptOssExperts not found in transformers.integrations.mxfp4"
+                    "bitsloth: Mxfp4GptOssExperts not found in transformers.integrations.mxfp4"
                 )
             return
     except Exception as e:
         if BITSLOTH_ENABLE_LOGGING:
-            logger.warning(f"Unsloth: Could not patch MXFP4 GPT OSS for LoRA: {e}")
+            logger.warning(f"bitsloth: Could not patch MXFP4 GPT OSS for LoRA: {e}")
         return
 
     # Check if already patched
-    if hasattr(Mxfp4GptOssExpertsClass, "_unsloth_mxfp4_lora_patched"):
+    if hasattr(Mxfp4GptOssExpertsClass, "_bitsloth_mxfp4_lora_patched"):
         return
 
     # Only patch if triton_kernels is available
@@ -1944,20 +1944,20 @@ def patch_mxfp4_gpt_oss_for_lora():
         # Use native MXFP4 + LoRA (keeps weights quantized)
         Mxfp4GptOssExpertsClass._original_forward = Mxfp4GptOssExpertsClass.forward
         Mxfp4GptOssExpertsClass.forward = forward_mxfp4_gpt_oss_with_lora
-        Mxfp4GptOssExpertsClass._unsloth_mxfp4_lora_patched = True
+        Mxfp4GptOssExpertsClass._bitsloth_mxfp4_lora_patched = True
         if BITSLOTH_ENABLE_LOGGING:
-            logger.info("Unsloth: Patched MXFP4 GPT OSS MoE for LoRA training")
+            logger.info("bitsloth: Patched MXFP4 GPT OSS MoE for LoRA training")
     else:
         # triton_kernels NOT available - do NOT patch
         # The model will fail with a helpful error if user tries to use MXFP4 without dequantization
-        Mxfp4GptOssExpertsClass._unsloth_mxfp4_lora_patched = True
+        Mxfp4GptOssExpertsClass._bitsloth_mxfp4_lora_patched = True
         if BITSLOTH_ENABLE_LOGGING:
             logger.warning(
-                "Unsloth: triton_kernels is not installed. MXFP4 GPT OSS will NOT be patched for LoRA.\n"
+                "bitsloth: triton_kernels is not installed. MXFP4 GPT OSS will NOT be patched for LoRA.\n"
                 "To train GPT OSS with LoRA, either:\n"
                 "  1. Install triton_kernels from OpenAI (for native MXFP4), OR\n"
                 "  2. Use Mxfp4Config(dequantize=True) when loading (dequantizes to bf16), OR\n"
-                "  3. Use the BF16 model: 'unsloth/gpt-oss-20b-BF16'"
+                "  3. Use the BF16 model: 'bitsloth/gpt-oss-20b-BF16'"
             )
 
 
@@ -1972,28 +1972,28 @@ def should_dequantize_mxfp4():
     Check if MXFP4 should be dequantized to bf16.
 
     Returns True if:
-    - UNSLOTH_MXFP4_NO_DEQUANTIZE is not set or "0", OR
-    - UNSLOTH_MXFP4_NO_DEQUANTIZE="1" but triton_kernels is not available
+    - bitsloth_MXFP4_NO_DEQUANTIZE is not set or "0", OR
+    - bitsloth_MXFP4_NO_DEQUANTIZE="1" but triton_kernels is not available
 
     Returns False if:
-    - UNSLOTH_MXFP4_NO_DEQUANTIZE="1" AND triton_kernels is available
+    - bitsloth_MXFP4_NO_DEQUANTIZE="1" AND triton_kernels is available
 
     MEMORY IMPACT:
     - MXFP4 quantized: ~10GB for GPT-OSS 20B
     - MXFP4 dequantized to bf16: ~40GB for GPT-OSS 20B
 
     To keep MXFP4 quantized (requires triton_kernels):
-        export UNSLOTH_MXFP4_NO_DEQUANTIZE=1
+        export bitsloth_MXFP4_NO_DEQUANTIZE=1
     """
     global _MXFP4_DEQUANT_WARNED
 
-    if not UNSLOTH_MXFP4_NO_DEQUANTIZE:
+    if not bitsloth_MXFP4_NO_DEQUANTIZE:
         # Default: dequantize to bf16
         if BITSLOTH_ENABLE_LOGGING and not _MXFP4_DEQUANT_WARNED:
             _MXFP4_DEQUANT_WARNED = True
             logger.warning(
-                "Unsloth: MXFP4 will be dequantized to bf16 (~4x memory increase). "
-                "To keep 4-bit: set UNSLOTH_MXFP4_NO_DEQUANTIZE=1 and install triton_kernels."
+                "bitsloth: MXFP4 will be dequantized to bf16 (~4x memory increase). "
+                "To keep 4-bit: set bitsloth_MXFP4_NO_DEQUANTIZE=1 and install triton_kernels."
             )
         return True
 
@@ -2001,7 +2001,7 @@ def should_dequantize_mxfp4():
         if BITSLOTH_ENABLE_LOGGING and not _MXFP4_DEQUANT_WARNED:
             _MXFP4_DEQUANT_WARNED = True
             logger.warning(
-                "Unsloth: UNSLOTH_MXFP4_NO_DEQUANTIZE=1 but triton_kernels not available. "
+                "bitsloth: bitsloth_MXFP4_NO_DEQUANTIZE=1 but triton_kernels not available. "
                 "Will dequantize MXFP4 to bf16 (~4x memory increase). "
                 "Install triton_kernels to keep 4-bit quantized weights."
             )
@@ -2009,7 +2009,7 @@ def should_dequantize_mxfp4():
 
     if BITSLOTH_ENABLE_LOGGING and not _MXFP4_DEQUANT_WARNED:
         _MXFP4_DEQUANT_WARNED = True
-        logger.info("Unsloth: Keeping MXFP4 quantized (triton_kernels available)")
+        logger.info("bitsloth: Keeping MXFP4 quantized (triton_kernels available)")
     return False  # Keep MXFP4 quantized
 
 
@@ -2121,9 +2121,9 @@ def patch_gpt_oss_linearized():
     Patch GPT OSS for 4bit loading with grouped_mm support.
     Only patches the GptOssExperts forward method - keeps original classes for proper weight loading.
     """
-    if "gpt_oss" not in _normalized_unsloth_model_name():
+    if "gpt_oss" not in _normalized_bitsloth_model_name():
         return
-    if "_load_in_4bit_" not in _normalized_unsloth_model_name():
+    if "_load_in_4bit_" not in _normalized_bitsloth_model_name():
         return
     if _should_use_gpt_oss_bnb4bit():
         return
@@ -2157,14 +2157,14 @@ def patch_gpt_oss_linearized():
                 self, hidden_states, router_indices, routing_weights
             )
 
-        if os.environ.get("UNSLOTH_FORCE_FLOAT32", "0") == "1":
+        if os.environ.get("bitsloth_FORCE_FLOAT32", "0") == "1":
             transformers.models.gpt_oss.modeling_gpt_oss.GptOssExperts.forward = (
                 experts_forward
             )
 
     if BITSLOTH_ENABLE_LOGGING:
         logger.info(
-            f"Unsloth: Patched GPT OSS MoE for 4bit loading (backend: {backend})"
+            f"bitsloth: Patched GPT OSS MoE for 4bit loading (backend: {backend})"
         )
     return
 
@@ -2174,15 +2174,15 @@ TEMPORARY_PATCHES.append(patch_gpt_oss_linearized)
 
 
 def patch_GptOssAttention():
-    if os.environ.get("UNSLOTH_ENABLE_FLEX_ATTENTION", "1") == "0":
+    if os.environ.get("bitsloth_ENABLE_FLEX_ATTENTION", "1") == "0":
         return
     # Uncompiled flex_attention backward has a dtype bug in PyTorch
     # (sdpa_dense_backward: expected Float got BFloat16). The inplace eager
     # fallback also uses out= matmul which is incompatible with autograd.
     # Skip the patch and let stock transformers eager attention handle sinks.
-    if UNSLOTH_COMPILE_DISABLE:
+    if bitsloth_COMPILE_DISABLE:
         return
-    if "gpt_oss" not in _normalized_unsloth_model_name():
+    if "gpt_oss" not in _normalized_bitsloth_model_name():
         return
     try:
         from ..flex_attention import (
@@ -2463,7 +2463,7 @@ def patch_GptOssAttention():
         functions,
     )
     # Set env variable for padding purposes
-    os.environ["UNSLOTH_ENABLE_FLEX_ATTENTION"] = "1"
+    os.environ["bitsloth_ENABLE_FLEX_ATTENTION"] = "1"
 
 
 pass
@@ -2471,11 +2471,11 @@ TEMPORARY_PATCHES.append(patch_GptOssAttention)
 
 
 def patch_GptOssModel():
-    if os.environ.get("UNSLOTH_ENABLE_FLEX_ATTENTION", "1") == "0":
+    if os.environ.get("bitsloth_ENABLE_FLEX_ATTENTION", "1") == "0":
         return
-    if UNSLOTH_COMPILE_DISABLE:
+    if bitsloth_COMPILE_DISABLE:
         return
-    if "gpt_oss" not in _normalized_unsloth_model_name():
+    if "gpt_oss" not in _normalized_bitsloth_model_name():
         return
     try:
         import transformers.models.gpt_oss.modeling_gpt_oss
@@ -2831,7 +2831,7 @@ def patch_GptOssModel():
                     )
                 elif _actual_experts.__class__.__name__ == "Mxfp4GptOssExperts":
                     if mlp_forward is None:
-                        raise RuntimeError("Unsloth: MXFP4 forward is not found")
+                        raise RuntimeError("bitsloth: MXFP4 forward is not found")
                     hidden_states, _ = mlp_forward(decoder_layer.mlp, hidden_states)
                 else:
                     hidden_states = moe_forward_inference_bf16(
@@ -3026,7 +3026,7 @@ pass
 
 
 # Fix https://github.com/huggingface/transformers/pull/40474
-# RuntimeError: Unsloth: Failed to load model. Both AutoConfig and PeftConfig loading failed.
+# RuntimeError: bitsloth: Failed to load model. Both AutoConfig and PeftConfig loading failed.
 # AutoConfig error: 'GptOssConfig' object has no attribute 'max_position_embeddings'
 try:
     from transformers.configuration_utils import layer_type_validation
@@ -3277,7 +3277,7 @@ try:
             new_class = new_class.replace("Old_GptOssConfig", "GptOssConfig")
             if new_class == current_class:
                 logger.info(
-                    "Unsloth: Updating GPT OSS Config to fix missing `max_position_embeddings`"
+                    "bitsloth: Updating GPT OSS Config to fix missing `max_position_embeddings`"
                 )
                 patch_function(
                     transformers.models.gpt_oss.configuration_gpt_oss,
@@ -3294,7 +3294,7 @@ except Exception as e:
 
 
 def patch_gpt_oss_init_weights_modulelist_fix():
-    if "gpt_oss" not in _normalized_unsloth_model_name():
+    if "gpt_oss" not in _normalized_bitsloth_model_name():
         return
     try:
         import transformers.models.gpt_oss.modeling_gpt_oss
@@ -3305,7 +3305,7 @@ def patch_gpt_oss_init_weights_modulelist_fix():
         transformers.models.gpt_oss.modeling_gpt_oss.GptOssPreTrainedModel
     )
     GptOssExperts = transformers.models.gpt_oss.modeling_gpt_oss.GptOssExperts
-    if getattr(GptOssPreTrainedModel, "_unsloth_init_weights_fixed", False):
+    if getattr(GptOssPreTrainedModel, "_bitsloth_init_weights_fixed", False):
         return
     _original_init_weights = GptOssPreTrainedModel._init_weights
 
@@ -3324,7 +3324,7 @@ def patch_gpt_oss_init_weights_modulelist_fix():
         _original_init_weights(self, module)
 
     patch_function(GptOssPreTrainedModel, "_init_weights", _patched_init_weights)
-    GptOssPreTrainedModel._unsloth_init_weights_fixed = True
+    GptOssPreTrainedModel._bitsloth_init_weights_fixed = True
 
 
 pass
@@ -3333,12 +3333,12 @@ TEMPORARY_PATCHES.append(patch_gpt_oss_init_weights_modulelist_fix)
 
 # ============================================================================
 # Patch GptOssForCausalLM.forward for GRPO training
-# When UNSLOTH_RETURN_HIDDEN_STATES=1, return hidden_states instead of logits
+# When bitsloth_RETURN_HIDDEN_STATES=1, return hidden_states instead of logits
 # ============================================================================
 def patch_gpt_oss_for_grpo(phase="post_compile"):
     """
     Patch GptOssForCausalLM.forward for GRPO training.
-    When UNSLOTH_RETURN_HIDDEN_STATES=1, return hidden_states instead of logits.
+    When bitsloth_RETURN_HIDDEN_STATES=1, return hidden_states instead of logits.
     This fixes the matrix multiplication dimension mismatch issue in GRPO training.
 
     Only runs post-compile so the compiler can pattern-match cross-entropy in the
@@ -3347,7 +3347,7 @@ def patch_gpt_oss_for_grpo(phase="post_compile"):
     if phase != "post_compile":
         return
 
-    if "gpt_oss" not in _normalized_unsloth_model_name():
+    if "gpt_oss" not in _normalized_bitsloth_model_name():
         return
 
     try:
@@ -3357,7 +3357,7 @@ def patch_gpt_oss_for_grpo(phase="post_compile"):
             MoeCausalLMOutputWithPast,
         )
 
-        if hasattr(GptOssForCausalLM, "_unsloth_grpo_patched"):
+        if hasattr(GptOssForCausalLM, "_bitsloth_grpo_patched"):
             return
 
         _original_causal_lm_forward = GptOssForCausalLM.forward
@@ -3377,10 +3377,10 @@ def patch_gpt_oss_for_grpo(phase="post_compile"):
             logits_to_keep=0,
             **kwargs,
         ):
-            # This Unsloth Zoo code section is licensed under AGPL3
+            # This bitsloth Zoo code section is licensed under AGPL3
 
             RETURN_HIDDEN_STATES = (
-                os.environ.get("UNSLOTH_RETURN_HIDDEN_STATES", "0") == "1"
+                os.environ.get("bitsloth_RETURN_HIDDEN_STATES", "0") == "1"
             )
 
             if not RETURN_HIDDEN_STATES:
@@ -3437,21 +3437,21 @@ def patch_gpt_oss_for_grpo(phase="post_compile"):
                 router_logits=getattr(outputs, "router_logits", None),
             )
 
-        # Preserve __qualname__ so _unsloth_get_batch_samples can detect
+        # Preserve __qualname__ so _bitsloth_get_batch_samples can detect
         # this is a CausalLM forward and compute num_items_in_batch properly.
         _patched_causal_lm_forward.__qualname__ = (
             _original_causal_lm_forward.__qualname__
         )
         GptOssForCausalLM.forward = _patched_causal_lm_forward
-        GptOssForCausalLM._unsloth_grpo_patched = True
+        GptOssForCausalLM._bitsloth_grpo_patched = True
         if BITSLOTH_ENABLE_LOGGING:
             logger.info(
-                "Unsloth: Patched GptOssForCausalLM.forward for GRPO hidden states."
+                "bitsloth: Patched GptOssForCausalLM.forward for GRPO hidden states."
             )
 
     except Exception as e:
         if BITSLOTH_ENABLE_LOGGING:
-            logger.warning(f"Unsloth: Could not patch GptOssForCausalLM.forward: {e}")
+            logger.warning(f"bitsloth: Could not patch GptOssForCausalLM.forward: {e}")
 
 
 pass

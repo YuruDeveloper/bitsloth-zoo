@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -77,7 +77,7 @@ def chunked_hidden_states_selective_log_softmax(
     logit_softcapping: float = 0.0,
     temperature: float = 1.0,
 ) -> torch.Tensor:
-    # All Unsloth Zoo code licensed under AGPL3
+    # All bitsloth Zoo code licensed under AGPL3
     flat_hidden_states = hidden_states.reshape(-1, hidden_states.shape[-1])
     flat_index = index.reshape(-1)
 
@@ -325,7 +325,7 @@ def grpo_compute_loss(
     advantages,
     **kwargs
 ):
-    # All Unsloth Zoo code licensed under AGPL3
+    # All bitsloth Zoo code licensed under AGPL3
     # Set defaults for optional arguments
     loss_type = kwargs.get("loss_type", "grpo")
     epsilon_low = kwargs.get("epsilon_low", 0.2)
@@ -495,9 +495,9 @@ RL_REPLACEMENTS["grpo_compute_loss_slow"] = \
         "def grpo_compute_loss_slow",
 )
 
-# Unsloth's memory efficient GRPO implementation
-class UnslothEfficientGRPO(torch.autograd.Function):
-    # All Unsloth Zoo code licensed under AGPL3
+# bitsloth's memory efficient GRPO implementation
+class bitslothEfficientGRPO(torch.autograd.Function):
+    # All bitsloth Zoo code licensed under AGPL3
     @staticmethod
     def forward(ctx, _new_logps, _old_logps, _ref_logps, _sampling_per_token_logps, lm_head, _input_ids, _mask, _advantages, beta, scaler = None, n_chunks = 1, extra_kwargs=None):
         if extra_kwargs is None:
@@ -640,7 +640,7 @@ class UnslothEfficientGRPO(torch.autograd.Function):
         return (grad_input, None, None, None, None, None, None, None, None, None, None, None)
     pass
 pass
-RL_REPLACEMENTS["UnslothEfficientGRPO"] = UnslothEfficientGRPO
+RL_REPLACEMENTS["bitslothEfficientGRPO"] = bitslothEfficientGRPO
 
 
 def grpo_accumulated_loss(
@@ -655,7 +655,7 @@ def grpo_accumulated_loss(
     n_chunks = -1,
     **kwargs,
 ):
-    # All Unsloth Zoo code licensed under AGPL3
+    # All bitsloth Zoo code licensed under AGPL3
     bsz, qlen = input_ids.shape
 
     pixel_values = kwargs.get('pixel_values',None)
@@ -685,9 +685,9 @@ def grpo_accumulated_loss(
 
     if not hasattr(trainer, '_autocast_dtype'):
         trainer._autocast_dtype = torch.float16 if os.environ.get('ACCELERATE_MIXED_PRECISION', 'fp16') == 'fp16' else torch.bfloat16
-        if os.environ.get('UNSLOTH_FORCE_FLOAT32', '0') == '1': trainer._autocast_dtype = None
+        if os.environ.get('bitsloth_FORCE_FLOAT32', '0') == '1': trainer._autocast_dtype = None
     pass
-    os.environ["UNSLOTH_RETURN_HIDDEN_STATES"] = "1"
+    os.environ["bitsloth_RETURN_HIDDEN_STATES"] = "1"
 
     lm_head = trainer.model.get_output_embeddings().weight
     dtype_bytes = 16 if trainer._autocast_dtype in [torch.float16, torch.bfloat16] else 32
@@ -697,35 +697,35 @@ def grpo_accumulated_loss(
     hidden_dim = lm_head.shape[1]
     vocab_dim = lm_head.shape[0]
 
-    if trainer.args.unsloth_grpo_mini_batch is None:
+    if trainer.args.bitsloth_grpo_mini_batch is None:
         if not hasattr(trainer, "_has_autotuned"):
             trainer._has_autotuned = True
             B, multiplier = autotune_batch_and_chunks(
-                total_rows, seq_len, hidden_dim, vocab_dim, dtype_bytes, trainer.args.unsloth_logit_chunk_multiplier
+                total_rows, seq_len, hidden_dim, vocab_dim, dtype_bytes, trainer.args.bitsloth_logit_chunk_multiplier
             )
-            trainer.args.unsloth_grpo_mini_batch = max(1, total_rows//B)
-            trainer.args.unsloth_logit_chunk_multiplier = multiplier
-            B = trainer.args.unsloth_grpo_mini_batch
-            multiplier = trainer.args.unsloth_logit_chunk_multiplier
+            trainer.args.bitsloth_grpo_mini_batch = max(1, total_rows//B)
+            trainer.args.bitsloth_logit_chunk_multiplier = multiplier
+            B = trainer.args.bitsloth_grpo_mini_batch
+            multiplier = trainer.args.bitsloth_logit_chunk_multiplier
         elif trainer._step % trainer.current_gradient_accumulation_steps == 0:
-            B = trainer.args.unsloth_grpo_mini_batch
-            multiplier = trainer.args.unsloth_logit_chunk_multiplier
+            B = trainer.args.bitsloth_grpo_mini_batch
+            multiplier = trainer.args.bitsloth_logit_chunk_multiplier
             del trainer._has_autotuned
-            del trainer.args.unsloth_grpo_mini_batch
-            del trainer.args.unsloth_logit_chunk_multiplier
+            del trainer.args.bitsloth_grpo_mini_batch
+            del trainer.args.bitsloth_logit_chunk_multiplier
         else:
-            B = trainer.unsloth_grpo_mini_batch
-            multiplier = trainer.args.unsloth_logit_chunk_multiplier
+            B = trainer.bitsloth_grpo_mini_batch
+            multiplier = trainer.args.bitsloth_logit_chunk_multiplier
     else:
-        if trainer.args.unsloth_grpo_mini_batch > total_rows:
+        if trainer.args.bitsloth_grpo_mini_batch > total_rows:
             B = total_rows
         else:
-            B = trainer.args.unsloth_grpo_mini_batch
+            B = trainer.args.bitsloth_grpo_mini_batch
 
-        if trainer.args.unsloth_logit_chunk_multiplier is None:
+        if trainer.args.bitsloth_logit_chunk_multiplier is None:
             multiplier = max(4, seq_len // 4096)
         else:
-            multiplier = trainer.args.unsloth_logit_chunk_multiplier
+            multiplier = trainer.args.bitsloth_logit_chunk_multiplier
 
     if pixel_values is None:
         left_pad_tokens_per_prompt = calculate_pad_tokens_in_prompt(input_ids, logits_to_keep, trainer.processing_class.pad_token_id)
@@ -839,7 +839,7 @@ def grpo_accumulated_loss(
         if tensor is None: return None
         return tensor.to(device, non_blocking=non_blocking)
 
-    class Unsloth_Offloaded_Log_Softmax(torch.autograd.Function):
+    class bitsloth_Offloaded_Log_Softmax(torch.autograd.Function):
         """
         Manual Gradient Checkpointing/CPU Offloading for Log Softmax.
         """
@@ -913,7 +913,7 @@ def grpo_accumulated_loss(
                 temperature
             )
         else:
-            return Unsloth_Offloaded_Log_Softmax.apply(
+            return bitsloth_Offloaded_Log_Softmax.apply(
                 hidden_states, lm_head, index, chunks,
                 logit_scale_multiply, logit_scale_divide,
                 logit_softcapping, temperature
@@ -989,7 +989,7 @@ def grpo_accumulated_loss(
     new_logprobs = torch.cat(all_logprobs_list, dim=0)
 
     with autocaster:
-        loss, completion_length, mean_kl, delta, flat_is_ratio, coef_1 = UnslothEfficientGRPO.apply(
+        loss, completion_length, mean_kl, delta, flat_is_ratio, coef_1 = bitslothEfficientGRPO.apply(
             new_logprobs,
             old_logps,
             ref_logps,
@@ -1005,7 +1005,7 @@ def grpo_accumulated_loss(
         )
 
     # Must force not returning hidden states but logits otherwise gibberish
-    os.environ["UNSLOTH_RETURN_HIDDEN_STATES"] = "0"
+    os.environ["bitsloth_RETURN_HIDDEN_STATES"] = "0"
 
     return loss, completion_length, mean_kl, delta, flat_is_ratio, coef_1, completion_mask
     # Old non efficient code path
@@ -1029,8 +1029,8 @@ RL_REPLACEMENTS["grpo_accumulated_loss"] = grpo_accumulated_loss
 from .dataset_utils import sft_prepare_dataset
 RL_REPLACEMENTS["sft_prepare_dataset"] = sft_prepare_dataset
 
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by

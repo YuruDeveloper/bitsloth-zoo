@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -37,7 +37,7 @@ def mean_of_trained_tokens(model, eps = 1e-16):
     These include <|eot_id|>, <|start_header_id|>, <|end_header_id|>
     We reset them to the mean of the rest of the tokens
     """
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     embedding_matrix = model.get_input_embeddings ().weight.clone()
     lm_head_matrix   = model.get_output_embeddings().weight.clone()
 
@@ -48,7 +48,7 @@ def mean_of_trained_tokens(model, eps = 1e-16):
     n_trained = embedding_matrix.shape[0] - n_untrained
     # if n_untrained != 0:
     #     print(
-    #         f"Unsloth: Not an error, but your model has {n_untrained} untrained tokens.\n"\
+    #         f"bitsloth: Not an error, but your model has {n_untrained} untrained tokens.\n"\
     #         "We shall set them to the mean of the other trained tokens."
     #     )
     # pass
@@ -80,7 +80,7 @@ def add_new_tokens(
     Smartly resizes the tokenizer and adds new tokens to the model.
     We also disregard untrained tokens by removing them from the mean calculation.
     """
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     assert(isinstance(new_tokens, (list, tuple)))
     assert(len(new_tokens) > 0)
     assert(method == "mean" or method == "interpolation")
@@ -90,7 +90,7 @@ def add_new_tokens(
     overlapping_tokens = set(new_tokens) & set(tokenizer.vocab.keys())
     if len(overlapping_tokens) != 0:
         print(
-            f"Unsloth: You're adding new_tokens = {new_tokens}\n"\
+            f"bitsloth: You're adding new_tokens = {new_tokens}\n"\
             f"There are tokens which are overlapping = {list(overlapping_tokens)}\n"\
             f"We shall safely ignore these overlapping tokens."
         )
@@ -130,21 +130,21 @@ def add_new_tokens(
     # Confirm sizes are correct
     if embedding_matrix.shape[0] != (old_input_length  + len(new_tokens)):
         raise RuntimeError(
-            "Unsloth: Embedding matrix size did not get resized properly. Please file a bug report!"
+            "bitsloth: Embedding matrix size did not get resized properly. Please file a bug report!"
         )
     if lm_head_matrix.shape[0]   != (old_output_length + len(new_tokens)):
         raise RuntimeError(
-            "Unsloth: LM Head matrix size did not get resized properly. Please file a bug report!"
+            "bitsloth: LM Head matrix size did not get resized properly. Please file a bug report!"
         )
     if model.config.vocab_size   != (old_config_size   + len(new_tokens)):
         raise RuntimeError(
-            "Unsloth: Model's config vocab_size did not get resized properly. Please file a bug report!"
+            "bitsloth: Model's config vocab_size did not get resized properly. Please file a bug report!"
         )
     pass
 
     if method == "interpolation":
         print(
-            "Unsloth: You are using interpolation to add new tokens.\n"\
+            "bitsloth: You are using interpolation to add new tokens.\n"\
             f"We shall set new tokens = mean(embeddings)*{1-interpolation} + mean(new_tokens)*{interpolation}"
         )
         for j, token in enumerate(new_tokens):
@@ -206,7 +206,7 @@ def fix_untrained_tokens(model, tokenizer, train_dataset, IGNORED_TOKENIZER_NAME
     These include <|eot_id|>, <|start_header_id|>, <|end_header_id|>
     We reset them to the mean of the rest of the tokens
     """
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     embedding_matrix = model.get_input_embeddings ().weight
     lm_head_matrix   = model.get_output_embeddings().weight
     chat_template = getattr(tokenizer, "chat_template", None)
@@ -402,7 +402,7 @@ def fix_untrained_tokens(model, tokenizer, train_dataset, IGNORED_TOKENIZER_NAME
         token_ids = list(set(final_bad_items))
         tokens = tokenizer.decode(token_ids)
         raise ValueError(
-            f'Unsloth: Untrained tokens in rows [{list(set(which_locations))}] found.\n'\
+            f'bitsloth: Untrained tokens in rows [{list(set(which_locations))}] found.\n'\
             f"The token ids are [{token_ids}] and tokens are [{tokens}].\n"\
             f"The issue is the embed_tokens & lm_head not trainable, which will cause NaNs. "\
             'Restart then add `embed_tokens` & `lm_head` to '\
@@ -443,7 +443,7 @@ def fix_untrained_tokens(model, tokenizer, train_dataset, IGNORED_TOKENIZER_NAME
 
     # Set them to the mean
     print(
-        "Unsloth: Setting embed_tokens & lm_head untrained tokens to "\
+        "bitsloth: Setting embed_tokens & lm_head untrained tokens to "\
         "mean(trained) to counteract NaNs during training."
     )
     embedding_matrix[where_untrained] = mean_embedding.to(embedding_matrix.dtype)
@@ -475,7 +475,7 @@ POSSIBLE_RESERVED_TOKENS = (
 # Vision-specific tokens that should not be used as pad_token for text-only models.
 # Qwen3 text models share the same vocab as Qwen3-VL and include these tokens,
 # but using them as pad_token is semantically wrong and confusing.
-# See https://github.com/unslothai/unsloth/issues/4104
+# See https://github.com/bitslothai/bitsloth/issues/4104
 VISION_RESERVED_TOKENS = frozenset((
     "<|vision_pad|>",
     "<|image_pad|>",
@@ -489,9 +489,9 @@ def patch_tokenizer(model, tokenizer):
         Llama-3 is <|reserved...
         Llama-2 is <unk>
         Check if pad_token is not the same as eos_token otherwise the loss will ignore it!!
-        Fixes https://github.com/unslothai/unsloth/issues/5
+        Fixes https://github.com/bitslothai/bitsloth/issues/5
     """
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
 
     # Guard against None tokenizer (e.g., some VLM processors without tokenizer)
     if tokenizer is None:
@@ -517,7 +517,7 @@ def patch_tokenizer(model, tokenizer):
     # Detect if model is a vision model. Text-only models should not
     # use vision-specific tokens (e.g. <|vision_pad|>) as pad_token,
     # even if those tokens exist in the vocab.
-    # See https://github.com/unslothai/unsloth/issues/4104
+    # See https://github.com/bitslothai/bitsloth/issues/4104
     is_vision_model = hasattr(original_tokenizer, "image_processor")
     if not is_vision_model and model is not None and hasattr(model, "config"):
         model_type = getattr(model.config, "model_type", "") or ""
@@ -652,7 +652,7 @@ def _is_conversation_format(text):
     This handles the case where users pass conversation format directly to processor.__call__
     instead of first applying apply_chat_template.
     """
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     if not isinstance(text, list):
         return False
     if len(text) == 0:
@@ -677,12 +677,12 @@ def patch_processor_call(processor):
     Without this patch, users get:
         AttributeError: 'dict' object has no attribute 'replace'
     """
-    # All Unsloth Zoo code licensed under LGPLv3
+    # All bitsloth Zoo code licensed under LGPLv3
     if not hasattr(processor, "apply_chat_template"):
         return processor
 
     # Only patch if not already patched
-    if hasattr(processor, "_unsloth_patched_call"):
+    if hasattr(processor, "_bitsloth_patched_call"):
         return processor
 
     # Store the original __call__ from the class
@@ -705,7 +705,7 @@ def patch_processor_call(processor):
     # Create a dynamic subclass just for this instance.
     # Use the original class name so save_pretrained writes the correct
     # processor_class into config files (fixes GitHub issue #4085).
-    # Double-patching is already prevented by _unsloth_patched_call check above.
+    # Double-patching is already prevented by _bitsloth_patched_call check above.
     original_class = processor.__class__
     patched_class = type(
         original_class.__name__,
@@ -718,13 +718,13 @@ def patch_processor_call(processor):
     )
     processor.__class__ = patched_class
 
-    processor._unsloth_patched_call = True
+    processor._bitsloth_patched_call = True
     return processor
 pass
 
 
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by

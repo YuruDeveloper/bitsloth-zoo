@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -46,11 +46,11 @@ def patch_qwen3_next_moe():
     try:
         import transformers.models.qwen3_next.modeling_qwen3_next
 
-        transformers.models.qwen3_next.modeling_qwen3_next.Qwen3NextExperts._unsloth_lora_extractor_fn = _qwen3_next_lora_extractor
+        transformers.models.qwen3_next.modeling_qwen3_next.Qwen3NextExperts._bitsloth_lora_extractor_fn = _qwen3_next_lora_extractor
     except Exception as e:
         if BITSLOTH_ENABLE_LOGGING:
             logger.warning(
-                f"Unsloth: Could not register Qwen3NextExperts LoRA extractor: {e}"
+                f"bitsloth: Could not register Qwen3NextExperts LoRA extractor: {e}"
             )
 
     try:
@@ -75,7 +75,7 @@ def patch_qwen3_next_moe():
     except Exception as e:
         if BITSLOTH_ENABLE_LOGGING:
             logger.warning(
-                f"Unsloth: Could not patch Qwen3NextExperts or Qwen3NextSparseMoeBlock: {e}"
+                f"bitsloth: Could not patch Qwen3NextExperts or Qwen3NextSparseMoeBlock: {e}"
             )
 
     try:
@@ -92,7 +92,7 @@ def patch_qwen3_next_moe():
     except Exception as e:
         if BITSLOTH_ENABLE_LOGGING:
             logger.warning(
-                f"Unsloth: Could not patch Qwen3NextForCausalLM.forward: {e}"
+                f"bitsloth: Could not patch Qwen3NextForCausalLM.forward: {e}"
             )
 
 

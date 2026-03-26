@@ -1,5 +1,5 @@
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -284,7 +284,7 @@ def PatchRLStatistics(algorithm = "grpo_trainer", other_metrics = []):
     all_metrics = get_trl_metrics()
     if algorithm not in all_metrics:
         print(
-            f"Unsloth for {algorithm.upper()} is not yet implemented! Just ignore this function.\n"\
+            f"bitsloth for {algorithm.upper()} is not yet implemented! Just ignore this function.\n"\
             f"We support: `{list(all_metrics.keys())}`"
         )
         return
@@ -292,8 +292,8 @@ def PatchRLStatistics(algorithm = "grpo_trainer", other_metrics = []):
     _PatchRLStatistics(all_metrics[algorithm] + other_metrics, algorithm)
 pass
 
-# Unsloth Zoo - Utilities for Unsloth
-# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the Unsloth team. All rights reserved.
+# bitsloth Zoo - Utilities for bitsloth
+# Copyright 2023-present Daniel Han-Chen, Michael Han-Chen & the bitsloth team. All rights reserved.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
