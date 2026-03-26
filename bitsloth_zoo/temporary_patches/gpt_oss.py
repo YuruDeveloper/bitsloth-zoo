@@ -51,7 +51,9 @@ torch_cuda_device = torch.cuda.device
 # MXFP4 configuration
 # Set bitsloth_MXFP4_NO_DEQUANTIZE=1 to keep MXFP4 weights quantized (requires triton_kernels)
 # Otherwise, MXFP4 weights will be dequantized to bf16 for LoRA training
-bitsloth_MXFP4_NO_DEQUANTIZE = os.environ.get("bitsloth_MXFP4_NO_DEQUANTIZE", "0") == "1"
+bitsloth_MXFP4_NO_DEQUANTIZE = (
+    os.environ.get("bitsloth_MXFP4_NO_DEQUANTIZE", "0") == "1"
+)
 
 
 def _check_triton_kernels_available():

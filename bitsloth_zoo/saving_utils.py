@@ -59,7 +59,7 @@ language:
 
 This {model_type} model was trained 2x faster with [bitsloth](https://github.com/bitslothai/bitsloth) and Huggingface's TRL library.
 
-[<img src="https://raw.githubusercontent.com/bitslothai/bitsloth/main/images/bitsloth%20made%20with%20love.png" width="200"/>](https://github.com/bitslothai/bitsloth)
+[<img src="https://raw.githubusercontent.com/bitslothai/"bitsloth/main/images/bitsloth%20made%20with%20love.png" width="200"/>](https://github.com/bitslothai/bitsloth)
 """
 
 import torch
