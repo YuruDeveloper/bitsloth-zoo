@@ -30,7 +30,7 @@
 
 __all__ = [
     "process_vision_info",
-    "bitslothVisionDataCollator",
+    "BitslothVisionDataCollator",
 ]
 
 IMAGE_TOKENS = [
@@ -699,7 +699,7 @@ LANCZOS = PIL.Image.Resampling.LANCZOS
 from .dataset_utils import train_on_responses_only as _train_on_responses_only
 
 
-class bitslothVisionDataCollator:
+class BitslothVisionDataCollator:
     # All bitsloth Zoo code licensed under LGPLv3
     __slots__ = (
         "padding_token_ids",
@@ -743,7 +743,7 @@ class bitslothVisionDataCollator:
     ):
         if not hasattr(processor, "image_processor"):
             raise TypeError(
-                "bitsloth: bitslothVisionDataCollator is only for image models!"
+                "bitsloth: BitslothVisionDataCollator is only for image models!"
             )
 
         self.padding_token_ids = get_padding_tokens_ids(processor)
